@@ -1,92 +1,40 @@
-export interface Topic {
+export interface FeedItem {
   id: string;
   title: string;
   description: string;
-  prompt: string;
-  creator: string;
-  status: 'forming' | 'completed';
-  joinedCount: number;
-  targetCount: number;
-  likes: string;
-  city: string;
-  tone: string;
-  mode: string;
-  deadline: string;
-  durationLimit?: number;
-  shares?: string;
-  bookmarks?: string;
-  image?: string;
+  category: string;
+  author: string;
+  location: string;
+  image: string;
 }
 
-export interface GiftRecord {
+export interface MessageThread {
   id: string;
-  topicId: string;
-  userId: string;
-  userName: string;
+  name: string;
   avatar: string;
-  giftName: string;
-  giftValue: number;
+  lastMessage: string;
+  time: string;
+  unread: number;
 }
 
 export interface User {
   id: string;
   name: string;
+  handle: string;
   avatar: string;
   bio: string;
-  streak: number;
+  posts: number;
   followers: number;
   following: number;
-  gender?: string;
-  ipLocation?: string;
 }
 
 export type Screen =
-  | 'splash'
-  | 'login'
   | 'home'
-  | 'topic-detail'
-  | 'create-circle'
-  | 'text-composer'
-  | 'create-and-shoot'
-  | 'album-composer'
-  | 'create-success'
-  | 'join'
-  | 'join-success'
-  | 'circle'
-  | 'content-detail'
-  | 'messages'
-  | 'dm'
-  | 'user-profile'
-  | 'personal-profile'
-  | 'couple-space'
-  | 'couple-date-schedule'
-  | 'couple-travel-plan'
-  | 'couple-bridge'
-  | 'couple-marriage-map'
-  | 'couple-detail'
-  | 'relation-invite'
-  | 'relation-sent'
-  | 'relation-review'
-  | 'relation-accepted'
-  | 'relation-rejected'
   | 'smart-ring'
-  | 'shop'
-  | 'recharge'
-  | 'gift'
-  | 'video-edit'
+  | 'messages'
   | 'me'
-  | 'my-works'
-  | 'friends'
+  | 'content-detail'
+  | 'chat'
+  | 'profile'
   | 'settings'
-  | 'energy-detail'
-  | 'liked-topics'
-  | 'saved-topics'
-  | 'network-list'
-  | 'account-profile'
-  | 'privacy-policy'
-  | 'notification-settings'
-  | 'blacklist'
-  | 'report-user'
-  | 'report-success'
-  | 'feedback'
-  | 'feedback-detail';
+  | 'reserved-space';

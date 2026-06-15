@@ -1,7066 +1,1613 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Camera,
-  MapPin,
-  Users,
-  MessageCircle,
-  User as UserIcon,
-  Home,
-  Flame,
-  ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  Heart,
-  CornerUpRight,
   ArrowLeft,
+  BadgeCheck,
+  BarChart3,
   Bell,
+  ChevronRight,
+  FileText,
+  Globe2,
+  Heart,
+  Home,
+  Languages,
+  LayoutDashboard,
+  MessageCircle,
+  MessageSquare,
+  MoreHorizontal,
+  Plus,
+  Search,
   Settings,
   ShieldCheck,
-  Gift,
-  Gem,
-  Plus,
-  Play,
-  RotateCw,
-  Sparkles,
-  Zap,
-  HelpCircle,
-  Star,
-  Check,
+  SlidersHorizontal,
+  Smartphone,
+  ToggleLeft,
+  ToggleRight,
+  User as UserIcon,
+  Users,
   X,
-  FileOutput,
-  FileX,
-  Search,
-  Bookmark,
-  Trash2,
-  UserPlus,
-  Video,
-  Lock,
-  Unlock,
-  Globe,
-  Users2,
-  MoreHorizontal,
-  Clock,
-  AlertTriangle,
-  ArrowRight,
-  Hash,
-  MessageSquare,
-  Pencil,
-  Image as ImageIcon,
-  Mic,
-  Smile,
-  ClipboardCheck,
-  Info,
-  CalendarHeart,
-  Eye
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { TOPICS, CURRENT_USER, GIFTS, SHOP_ITEMS, SHARE_FRIENDS, MOCK_GIFT_RECORDS } from './constants';
+import { AnimatePresence, motion } from 'motion/react';
+import { CURRENT_USER, FEED_ITEMS, MESSAGES } from './constants';
 import { Logo } from './components/Logo';
-import LoginScreen from './screens/LoginScreen';
-import { Screen, Topic, GiftRecord } from './types';
+import type { FeedItem, MessageThread, Screen, User } from './types';
 
-// --- Shared Components ---
+const pageRoot = 'flex h-full flex-col bg-[#f7f3ec] pt-8 text-[#241f1b]';
+const headerRoot = 'sticky top-0 z-30 flex items-center justify-between border-b border-[#e8dfd2] bg-[#f7f3ec]/94 px-5 py-4 backdrop-blur-xl';
+const iconButton = 'flex h-10 w-10 items-center justify-center rounded-xl border border-[#e8dfd2] bg-white text-[#241f1b] shadow-sm active:scale-95 transition-transform';
+const primaryButton = 'h-12 rounded-full bg-[#241f1b] px-5 text-sm font-black text-white shadow-sm active:scale-95 transition-transform';
+const mutedButton = 'h-12 rounded-full border border-[#e8dfd2] bg-white px-5 text-sm font-black text-[#6f6256] active:scale-95 transition-transform';
+const adminCard = 'rounded-lg border border-[#e5e7eb] bg-white shadow-sm';
+const adminLabel = 'text-[11px] font-black uppercase tracking-[0.16em] text-[#6b7280]';
+const adminInput = 'h-10 w-full rounded-md border border-[#d1d5db] bg-white px-3 text-sm font-medium text-[#111827] outline-none focus:border-[#111827]';
+const adminActionButton = 'h-8 rounded-md border border-[#d1d5db] px-3 text-xs font-black text-[#111827]';
 
-const SpotlightMarquee = ({ spotlightTopics, onSelect }: { spotlightTopics: Topic[], onSelect: (t: Topic) => void }) => {
-  if (spotlightTopics.length === 0) return null;
+type AdminSection =
+  | 'overview'
+  | 'app'
+  | 'content'
+  | 'comments'
+  | 'users'
+  | 'feedback'
+  | 'reports'
+  | 'appeals'
+  | 'permissions'
+  | 'messages'
+  | 'smart-ring'
+  | 'moderation'
+  | 'language';
 
+function AdminToggle({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  description: string;
+}) {
   return (
-    <div className="w-full h-12 flex items-center overflow-hidden relative">
-      <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-dark to-transparent z-10"></div>
-      <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-dark to-transparent z-10"></div>
-      <motion.div
-        animate={{ x: [0, -900] }}
-        transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
-        className="flex whitespace-nowrap gap-3 items-center px-4"
-      >
-        {[...spotlightTopics, ...spotlightTopics, ...spotlightTopics, ...spotlightTopics, ...spotlightTopics].map((topic, i) => (
-          <button
-            key={`${topic.id}-${i}`}
-            onClick={() => onSelect(topic)}
-            className="h-9 px-4 rounded-full bg-white/10 border border-white/15 backdrop-blur-xl flex items-center gap-2.5 group shadow-sm"
-          >
-            {i % 2 === 0 ? (
-              <Flame size={14} className="text-red-primary fill-current" />
-            ) : (
-              <Sparkles size={14} className="text-gold fill-gold" />
-            )}
-            <span className="text-sm font-bold text-white/80 max-w-[150px] truncate">{topic.city}的{topic.prompt}</span>
-          </button>
+    <button
+      onClick={() => onChange(!checked)}
+      className="flex w-full items-center justify-between gap-4 rounded-md border border-[#e5e7eb] bg-white px-4 py-3 text-left transition-colors hover:bg-[#f9fafb]"
+    >
+      <span>
+        <span className="block text-sm font-black text-[#111827]">{label}</span>
+        <span className="mt-0.5 block text-xs font-medium leading-relaxed text-[#6b7280]">{description}</span>
+      </span>
+      {checked ? <ToggleRight className="shrink-0 text-[#111827]" size={34} /> : <ToggleLeft className="shrink-0 text-[#9ca3af]" size={34} />}
+    </button>
+  );
+}
+
+function AdminField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block space-y-2">
+      <span className={adminLabel}>{label}</span>
+      <input value={value} onChange={(event) => onChange(event.target.value)} className={adminInput} />
+    </label>
+  );
+}
+
+function AdminSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="block space-y-2">
+      <span className={adminLabel}>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className={adminInput}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
         ))}
-      </motion.div>
+      </select>
+    </label>
+  );
+}
+
+function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'green' | 'amber' | 'red' }) {
+  const toneClass = {
+    neutral: 'bg-[#f3f4f6] text-[#374151]',
+    green: 'bg-[#dcfce7] text-[#166534]',
+    amber: 'bg-[#fef3c7] text-[#92400e]',
+    red: 'bg-[#fee2e2] text-[#991b1b]',
+  }[tone];
+
+  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${toneClass}`}>{children}</span>;
+}
+
+function UserIdentity({
+  name,
+  userId,
+  hasRing = true,
+  ringBound = false,
+}: {
+  name?: string;
+  userId: string;
+  hasRing?: boolean;
+  ringBound?: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        {name && <p className="font-bold text-[#111827]">{name}</p>}
+        {hasRing && (
+          <span
+            title={ringBound ? '已购买戒指 + 已绑定' : '已购买戒指'}
+            className="inline-flex h-6 items-center gap-1 rounded-full bg-[#eef2ff] px-2 text-[#3730a3]"
+          >
+            <BadgeCheck size={14} strokeWidth={2.6} />
+            {ringBound && <Heart size={12} fill="currentColor" strokeWidth={2.8} />}
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-xs font-black text-[#6b7280]">{userId}</p>
     </div>
   );
-};
+}
 
-const lightPageRoot = 'flex flex-col h-full bg-[radial-gradient(circle_at_top,#fffaf4_0%,#f7f2ea_42%,#f2ebe1_100%)] text-[#2f261d]';
-const lightPageRootPadded = `${lightPageRoot} pt-8`;
-const lightHeaderShell = 'p-6 flex items-center justify-between sticky top-0 bg-[#f9f5ef]/90 backdrop-blur-xl z-20 border-b border-[#e8dfd2]';
-const lightIconButton = 'w-10 h-10 rounded-xl flex items-center justify-center border border-[#e9dfd3] bg-white/80 text-[#4f3d2d] shadow-sm active:scale-95 transition-transform';
-const lightSurfaceCard = 'rounded-[24px] border border-[#ece3d7] bg-white/82 shadow-[0_18px_40px_rgba(103,81,58,0.06)] backdrop-blur-xl';
-const lightInputField = 'bg-white/82 border border-[#eadfce] text-[#2f261d] placeholder:text-[#baa897]';
-const userIpLocations: Record<string, string> = {
-  [CURRENT_USER.name]: CURRENT_USER.ipLocation || '广东',
-  Mia: '浙江',
-  林野: '上海',
-  周屿: '广东',
-  南川: '四川',
-  Echo: '北京',
-  阿泽: '广东',
-  小北: '江苏',
-};
-const getUserIpLocation = (name: string) => userIpLocations[name] || ['广东', '浙江', '上海', '北京', '四川', '江苏'][Math.abs([...name].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 6];
-type ShareFriend = (typeof SHARE_FRIENDS)[number];
-const cpTypeRank: Record<string, number> = { '真爱': 0, '闺蜜': 1, '兄弟': 2 };
-const sortedShareFriends = [...SHARE_FRIENDS].sort((a, b) => {
-  const aRank = a.cpType ? cpTypeRank[a.cpType] : 99;
-  const bRank = b.cpType ? cpTypeRank[b.cpType] : 99;
-  return aRank - bRank;
-});
-const getCpStyle = (type?: ShareFriend['cpType'] | null) => {
-  if (type === '真爱') return { ring: 'border-[#FE2C55] bg-[#FE2C55]/10', badge: 'bg-[#FE2C55] text-white', text: 'text-[#FE2C55]' };
-  if (type === '闺蜜') return { ring: 'border-[#6366f1] bg-[#6366f1]/10', badge: 'bg-[#6366f1] text-white', text: 'text-[#6366f1]' };
-  if (type === '兄弟') return { ring: 'border-[#10b981] bg-[#10b981]/10', badge: 'bg-[#10b981] text-white', text: 'text-[#10b981]' };
-  return { ring: 'border-[#eadfce] bg-white', badge: '', text: 'text-[#8f8173]' };
-};
-const dailyLifeFrames = [
-  'https://images.unsplash.com/photo-1495195134817-aeb325a55b65?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1518391846015-55a9cc003b25?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&h=800&fit=crop',
-  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=800&fit=crop',
-];
-const dailyLifeVideos = [
-  'https://videos.pexels.com/video-files/853889/853889-hd_1920_1080_25fps.mp4',
-  'https://videos.pexels.com/video-files/2795749/2795749-uhd_2560_1440_25fps.mp4',
-  'https://videos.pexels.com/video-files/3209828/3209828-uhd_2560_1440_25fps.mp4',
-  'https://videos.pexels.com/video-files/855564/855564-hd_1920_1080_24fps.mp4',
-  'https://videos.pexels.com/video-files/1721294/1721294-hd_1920_1080_25fps.mp4',
-  'https://videos.pexels.com/video-files/2103099/2103099-hd_1920_1080_30fps.mp4',
-  'https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4',
-  'https://videos.pexels.com/video-files/3255275/3255275-hd_1920_1080_25fps.mp4',
-  'https://videos.pexels.com/video-files/3769033/3769033-hd_1920_1080_25fps.mp4',
-  'https://videos.pexels.com/video-files/4496268/4496268-hd_1920_1080_25fps.mp4',
-  'https://videos.pexels.com/video-files/3752507/3752507-hd_1920_1080_24fps.mp4',
-  'https://videos.pexels.com/video-files/4782135/4782135-hd_1920_1080_25fps.mp4',
-];
-const dailyLifeCaptions = [
-  '今天的第一口早餐',
-  '下班路上的风',
-  '雨后路面倒影',
-  '地铁窗外一秒',
-  '厨房里的热气',
-  '深夜还亮的灯',
-  '午后三点影子',
-  '便利店门口',
-  '桌面没来得及收',
-  '回家前的天空',
-  '和朋友碰个头',
-  '新鞋第一次出门',
-];
-const dailyLifeUsers = ['林野', 'Mia', '周屿', '南川', 'Echo', '阿泽', '小北', '苏苏', '张震', 'Dear', 'Ann', 'Lucas'];
-const dailyLifeLocations = [
-  '深圳万象天地',
-  'HAUS NOWHERE',
-  '金牌陶陶居',
-  '华润大厦',
-  '地铁高新园站',
-  '深业上城',
-  '便利店门口',
-  '南山咖啡街',
-  '海岸城',
-  '人才公园',
-  '万象前海',
-  '深圳湾公园',
-];
-type HomeFeedItemKind = 'collab' | 'cp' | 'video' | 'image';
-type HomeFeedItem = {
-  id: string;
-  topic: Topic;
-  mediaIndex: number;
-  title: string;
-  author: string;
-  kind: HomeFeedItemKind;
-  heightClass: string;
-  imageCount?: number;
-};
-const suggestedCreators = [
-  { name: '阿飞 Kathy', bio: '教育内容热门作者', followers: '12.8万粉丝', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop' },
-  { name: '克里斯 Kris', bio: '热门作者', followers: '5684粉丝', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=128&h=128&fit=crop' },
-  { name: '把故事听到最后 Jayhon', bio: '音乐内容热门作者', followers: '8.7万粉丝', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=128&h=128&fit=crop' },
-  { name: '-谢安然-', bio: '二次元内容热门作者', followers: '6.2万粉丝', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=128&h=128&fit=crop', verified: true },
-  { name: '在香港的阿龍', bio: '探店内容热门作者', followers: '4.9万粉丝', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=128&h=128&fit=crop' },
-  { name: '一堆林女士', bio: '情感内容热门作者', followers: '3.8万粉丝', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=128&h=128&fit=crop' },
-  { name: '冰镇西瓜', bio: '模特', followers: '2.6万粉丝', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=watermelon' },
-  { name: '大连攻略', bio: '美食内容热门作者', followers: '9.4万粉丝', avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=大连攻略&backgroundColor=ef4444&fontWeight=700' },
-];
+function AdminTable({
+  headers,
+  rows,
+}: {
+  headers: string[];
+  rows: Array<Array<React.ReactNode>>;
+}) {
+  return (
+    <div className={`${adminCard} overflow-hidden`}>
+      <table className="w-full border-collapse text-left text-sm">
+        <thead className="bg-[#f9fafb] text-[11px] font-black uppercase tracking-[0.12em] text-[#6b7280]">
+          <tr>
+            {headers.map((header) => (
+              <th key={header} className="border-b border-[#e5e7eb] px-4 py-3">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#f1f5f9]">
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="bg-white">
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className="px-4 py-3 align-middle text-[#111827]">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-const BottomNav = ({ active, setScreen, onPlusClick }: {
-  active: Screen,
-  setScreen: (s: Screen) => void,
-  onPlusClick: () => void,
-}) => {
-  const navItems: { id: Screen, label: string, icon: typeof UserIcon }[] = [
-    { id: 'home', label: '首页', icon: Home },
-    { id: 'circle', label: 'DR圈', icon: Users },
+function AdminAppShell() {
+  const [active, setActive] = useState<AdminSection>('overview');
+  const [appName, setAppName] = useState('DRcircle');
+  const [tagline, setTagline] = useState('A calmer daily record.');
+  const [primaryTab, setPrimaryTab] = useState('首页');
+  const [loginMode, setLoginMode] = useState('三方登录');
+  const [homeEnabled, setHomeEnabled] = useState(true);
+  const [thirdPartyLoginEnabled, setThirdPartyLoginEnabled] = useState(true);
+  const [smartRingEnabled, setSmartRingEnabled] = useState(true);
+  const [messagesEnabled, setMessagesEnabled] = useState(true);
+  const [meEnabled, setMeEnabled] = useState(true);
+  const [ugcEnabled, setUgcEnabled] = useState(true);
+  const [defaultLanguage, setDefaultLanguage] = useState('英文');
+  const [region, setRegion] = useState('全球');
+  const [bottomTab1, setBottomTab1] = useState('首页');
+  const [bottomTab2, setBottomTab2] = useState('智能戒指');
+  const [bottomTab3, setBottomTab3] = useState('消息');
+  const [bottomTab4, setBottomTab4] = useState('我的');
+  const [contentFilter, setContentFilter] = useState('');
+  const [authorFilter, setAuthorFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('全部');
+  const [publishTimeFilter, setPublishTimeFilter] = useState('全部');
+  const [appliedFilters, setAppliedFilters] = useState({ content: '', author: '', status: '全部', publishTime: '全部' });
+  const [contentStatusById, setContentStatusById] = useState<Record<string, string>>({});
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReasonById, setRejectReasonById] = useState<Record<string, string>>({});
+  const [detailItemId, setDetailItemId] = useState<string | null>(null);
+  const [selectedReviewIds, setSelectedReviewIds] = useState<string[]>([]);
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('色情或低俗');
+  const [commentKeyword, setCommentKeyword] = useState('');
+  const [feedbackUserId, setFeedbackUserId] = useState('');
+  const [reportUserId, setReportUserId] = useState('');
+  const [appealUserId, setAppealUserId] = useState('');
+  const [messageUserId, setMessageUserId] = useState('');
+  const [messageViolationType, setMessageViolationType] = useState('全部');
+  const [commentStatus, setCommentStatus] = useState('全部');
+  const [userKeyword, setUserKeyword] = useState('');
+  const [userStatus, setUserStatus] = useState('全部');
+  const [feedbackStatus, setFeedbackStatus] = useState('全部');
+  const [reportStatus, setReportStatus] = useState('全部');
+  const [appealStatus, setAppealStatus] = useState('全部');
+  const [appealUserStatusFilter, setAppealUserStatusFilter] = useState('全部');
+  const [appealStateById, setAppealStateById] = useState<Record<string, { userStatus: string; reviewStatus: string; handledAt: string }>>({});
+  const [roleName, setRoleName] = useState('内容审核员');
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [adminAction, setAdminAction] = useState<{ action: string; target: string; needsReason?: boolean } | null>(null);
+
+  const navItems = [
+    { id: 'overview' as const, label: '总览', icon: LayoutDashboard },
+    { id: 'app' as const, label: 'App 基础配置', icon: Smartphone },
+    { id: 'content' as const, label: '内容管理', icon: FileText },
+    { id: 'comments' as const, label: '评论管理', icon: MessageSquare },
+    { id: 'users' as const, label: '用户管理', icon: Users },
+    { id: 'feedback' as const, label: '用户反馈', icon: Bell },
+    { id: 'reports' as const, label: '举报审核', icon: ShieldCheck },
+    { id: 'appeals' as const, label: '申诉审核', icon: FileText },
+    { id: 'permissions' as const, label: '权限管理', icon: SlidersHorizontal },
+    { id: 'messages' as const, label: '消息管理', icon: MessageSquare },
   ];
-
-  const rightNavItems: { id: Screen, label: string, icon: typeof UserIcon }[] = [
-    { id: 'messages', label: '消息', icon: MessageCircle },
-    { id: 'me', label: '我的', icon: UserIcon },
+  const bottomTabOptions = ['首页', '智能戒指', '消息', '我的', '空'];
+  const rejectReasons = [
+    '色情或低俗',
+    '政治敏感',
+    '煽动对立',
+    '赌博 / 博彩',
+    '引导跳转外部网站',
+    '疑似欺诈',
+    '种族歧视',
+    '违法违规',
+    '未成年人不当行为',
+    '违反公序良俗',
+    '危害人身安全',
+    '违规营销与假冒商品',
+    '辱骂与嘲讽',
+    '饭圈举报集中地',
   ];
-  const isLightNav = true;
+  const reviewItems = FEED_ITEMS.slice(0, 5).map((item, index) => {
+    const mediaType = index === 1 ? 'video' : 'image';
+    return {
+      ...item,
+      userId: String(100000041 + index),
+      mediaType,
+      body:
+        `${item.description} The post includes user submitted media and should be reviewed before distribution.`,
+      publishedAt: ['2026-06-15 09:12', '2026-06-15 08:30', '2026-06-14 22:18', '2026-06-12 19:45', '2026-05-28 11:06'][index],
+      hasRing: index !== 2,
+      ringBound: index === 0 || index === 3,
+      video: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+      videoPoster: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.jpg',
+      status: contentStatusById[item.id] || (index % 3 === 0 ? '待审核' : '已发布'),
+    };
+  });
+  const filteredReviewItems = reviewItems.filter((item) => {
+    const publishedDate = new Date(item.publishedAt.replace(' ', 'T'));
+    const now = new Date('2026-06-15T23:59:59');
+    const dayGap = Math.floor((now.getTime() - publishedDate.getTime()) / 86400000);
+    const contentMatched = `${item.title} ${item.body}`.toLowerCase().includes(appliedFilters.content.toLowerCase());
+    const authorMatched = `${item.author} ${item.userId}`.toLowerCase().includes(appliedFilters.author.toLowerCase());
+    const statusMatched = appliedFilters.status === '全部' || item.status === appliedFilters.status;
+    const timeMatched =
+      appliedFilters.publishTime === '全部' ||
+      (appliedFilters.publishTime === '今天' && item.publishedAt.startsWith('2026-06-15')) ||
+      (appliedFilters.publishTime === '昨天' && item.publishedAt.startsWith('2026-06-14')) ||
+      (appliedFilters.publishTime === '近7天' && dayGap <= 7) ||
+      (appliedFilters.publishTime === '近30天' && dayGap <= 30);
+    return contentMatched && authorMatched && statusMatched && timeMatched;
+  });
+  const filteredReviewIds = filteredReviewItems.map((item) => item.id);
+  const selectedVisibleCount = selectedReviewIds.filter((id) => filteredReviewIds.includes(id)).length;
+  const allVisibleSelected = filteredReviewIds.length > 0 && selectedVisibleCount === filteredReviewIds.length;
+  const detailItem = reviewItems.find((item) => item.id === detailItemId);
+  const openAdminAction = (action: string, target: string, needsReason = false) => setAdminAction({ action, target, needsReason });
+  const renderActionButtons = (actions: string[], target: string) => (
+    <div className="flex flex-wrap gap-2">
+      {actions.map((action) => (
+        <button key={action} onClick={() => openAdminAction(action, target, action === '违规')} className={adminActionButton}>
+          {action}
+        </button>
+      ))}
+    </div>
+  );
+  const userRows = [
+    ['100000041', '2026-04-21 10:12', '正常', CURRENT_USER.avatar, '女', 'iPhone 15 Pro', 12],
+    ['100000042', '2026-05-03 08:44', '风险', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop', '女', 'Pixel 9', 28],
+    ['100000043', '2026-05-16 19:02', '封禁', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=128&h=128&fit=crop', '男', 'iPhone 14', 17],
+  ].filter((row) => String(row[0]).includes(userKeyword) && (userStatus === '全部' || row[2] === userStatus));
 
-  const getNavButtonClass = (id: Screen) =>
-    `flex flex-col items-center justify-center space-y-1 w-12 h-12 rounded-xl transition-all duration-300 ${
-      active === id
-        ? isLightNav
-          ? 'text-[#2f261d]'
-          : 'text-white'
-        : isLightNav
-          ? 'text-[#ab9a89] hover:text-[#7a5c43]'
-          : 'text-white/30 hover:text-gold/60'
-    }`;
+  const renderOverview = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          ['活跃用户', '18,240', '+12.4%'],
+          ['已发布内容', '4,821', '+8.1%'],
+          ['待处理举报', '23', '-3.2%'],
+          ['新增用户', '1,284', '+9.6%'],
+        ].map(([label, value, meta]) => (
+          <div key={label} className={`${adminCard} p-5`}>
+            <p className={adminLabel}>{label}</p>
+            <p className="mt-3 text-3xl font-black text-[#111827]">{value}</p>
+            <p className="mt-2 text-xs font-bold text-[#6b7280]">{meta}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          ['认证用户', '6,138', '33.6%'],
+          ['戒指用户', '3,902', '21.4%'],
+          ['绑定情侣', '1,476', '37.8%'],
+          ['7日留存', '62.4%', '+4.1%'],
+          ['三方登录', '15,906', '87.2%'],
+          ['邀请码登录', '2,334', '12.8%'],
+          ['视频内容', '1,207', '25.0%'],
+          ['图片内容', '3,614', '75.0%'],
+        ].map(([label, value, meta]) => (
+          <div key={label} className={`${adminCard} p-5`}>
+            <p className={adminLabel}>{label}</p>
+            <p className="mt-3 text-2xl font-black text-[#111827]">{value}</p>
+            <p className="mt-2 text-xs font-bold text-[#6b7280]">{meta}</p>
+          </div>
+        ))}
+      </div>
+      <section className={`${adminCard} p-5`}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-black">用户停留时长占比</h2>
+          <StatusPill tone="neutral">近 7 天</StatusPill>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-4">
+          {[
+            ['首页信息流', '86%'],
+            ['智能戒指入口', '42%'],
+            ['消息', '58%'],
+            ['个人中心', '64%'],
+            ['内容发布', '31%'],
+            ['详情页查看', '73%'],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <div className="mb-2 flex items-center justify-between text-sm font-black">
+                <span>{label}</span>
+                <span>{value}</span>
+              </div>
+              <div className="h-2 rounded-full bg-[#e5e7eb]">
+                <div className="h-2 rounded-full bg-[#111827]" style={{ width: value }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 
-  const getNavLabelClass = (id: Screen) =>
-    `text-[10px] font-black tracking-widest ${
-      active === id
-        ? isLightNav
-          ? 'text-[#2f261d]'
-          : 'text-white'
-        : isLightNav
-          ? 'text-[#ab9a89]'
-          : 'text-white/30'
-    }`;
+  const renderApp = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-[1fr_1fr] gap-4">
+        <section className={`${adminCard} space-y-4 p-5`}>
+          <h2 className="text-lg font-black">品牌与导航</h2>
+          <AdminField label="App 名称" value={appName} onChange={setAppName} />
+          <AdminField label="标语" value={tagline} onChange={setTagline} />
+          <AdminSelect label="默认落地页" value={primaryTab} onChange={setPrimaryTab} options={['三方登录页', '首页', '智能戒指', '消息', '我的']} />
+          <AdminSelect label="登录方式" value={loginMode} onChange={setLoginMode} options={['三方登录', '三方+邀请码登录']} />
+        </section>
+        <section className={`${adminCard} space-y-3 p-5`}>
+          <h2 className="text-lg font-black">底部 Tab 配置</h2>
+          <p className="text-xs font-bold leading-relaxed text-[#6b7280]">设置 App 底部 TAB1-TAB4 分别显示的内容。</p>
+          <div className="grid grid-cols-2 gap-4">
+            <AdminSelect label="TAB1" value={bottomTab1} onChange={setBottomTab1} options={bottomTabOptions} />
+            <AdminSelect label="TAB2" value={bottomTab2} onChange={setBottomTab2} options={bottomTabOptions} />
+            <AdminSelect label="TAB3" value={bottomTab3} onChange={setBottomTab3} options={bottomTabOptions} />
+            <AdminSelect label="TAB4" value={bottomTab4} onChange={setBottomTab4} options={bottomTabOptions} />
+          </div>
+          <div className="rounded-md border border-dashed border-[#d1d5db] bg-[#f9fafb] p-4">
+            <p className={adminLabel}>当前底部导航</p>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {[bottomTab1, bottomTab2, bottomTab3, bottomTab4].map((tab, index) => (
+                <div key={`${tab}-${index}`} className="rounded-md bg-white p-3 text-center shadow-sm">
+                  <p className="text-[11px] font-black text-[#6b7280]">TAB{index + 1}</p>
+                  <p className="mt-1 text-sm font-black text-[#111827]">{tab}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+      <section className={`${adminCard} p-5`}>
+        <h2 className="text-lg font-black">H5 配置</h2>
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          {[
+            ['隐私政策', 'https://Drcirclr.cn/privacy'],
+            ['用户协议', 'https://Drcirclr.cn/terms'],
+            ['平台规则', 'https://Drcirclr.cn/rules'],
+            ['申诉页面', 'https://Drcirclr.cn/appeal'],
+            ['反馈页面', 'https://Drcirclr.cn/feedback'],
+          ].map(([label, url]) => (
+            <label key={label} className="block space-y-2">
+              <span className={adminLabel}>{label}</span>
+              <input value={url} readOnly className={adminInput} />
+            </label>
+          ))}
+        </div>
+      </section>
+      <div className="flex justify-end">
+        <button onClick={() => setSaveConfirmOpen(true)} className="h-10 rounded-md bg-[#111827] px-5 text-sm font-black text-white">
+          保存
+        </button>
+      </div>
+      {saveConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/38 p-8">
+          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-2xl">
+            <h2 className="text-lg font-black">确定保存更改吗？</h2>
+            <div className="mt-5 flex justify-end gap-3">
+              <button onClick={() => setSaveConfirmOpen(false)} className="h-10 rounded-md border border-[#d1d5db] px-4 text-sm font-black text-[#111827]">
+                取消
+              </button>
+              <button onClick={() => setSaveConfirmOpen(false)} className="h-10 rounded-md bg-[#111827] px-4 text-sm font-black text-white">
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
-  const indicatorClass = isLightNav
-    ? 'absolute -bottom-1 w-1 h-1 bg-[#2f261d] rounded-full shadow-[0_0_8px_rgba(47,38,29,0.28)]'
-    : 'absolute -bottom-1 w-1 h-1 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]';
+  const renderContent = () => (
+    <div className="space-y-4">
+      <section className={`${adminCard} grid grid-cols-[1fr_1fr_180px_180px_auto] items-end gap-4 p-5`}>
+        <AdminField label="按内容" value={contentFilter} onChange={setContentFilter} />
+        <AdminField label="按作者 / 用户ID" value={authorFilter} onChange={setAuthorFilter} />
+        <AdminSelect label="按状态" value={statusFilter} onChange={setStatusFilter} options={['全部', '待审核', '已发布', '违规']} />
+        <AdminSelect label="按发布时间" value={publishTimeFilter} onChange={setPublishTimeFilter} options={['全部', '今天', '昨天', '近7天', '近30天']} />
+        <button
+          onClick={() => setAppliedFilters({ content: contentFilter, author: authorFilter, status: statusFilter, publishTime: publishTimeFilter })}
+          className="h-10 rounded-md bg-[#111827] px-5 text-sm font-black text-white"
+        >
+          筛选
+        </button>
+      </section>
+
+      <section className={`${adminCard} flex items-end justify-between gap-4 p-5`}>
+        <div>
+          <p className={adminLabel}>批量操作</p>
+          <p className="mt-2 text-sm font-bold text-[#4b5563]">已选择 {selectedReviewIds.length} 条内容</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {bulkRejectOpen && (
+            <AdminSelect label="批量违规原因" value={bulkRejectReason} onChange={setBulkRejectReason} options={rejectReasons} />
+          )}
+          <button
+            disabled={selectedReviewIds.length === 0}
+            onClick={() => {
+              setContentStatusById((current) => {
+                const next = { ...current };
+                selectedReviewIds.forEach((id) => {
+                  next[id] = '已发布';
+                });
+                return next;
+              });
+              setRejectingId(null);
+              setBulkRejectOpen(false);
+            }}
+            className="h-10 rounded-md bg-[#111827] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-[#9ca3af]"
+          >
+            批量通过
+          </button>
+          <button
+            disabled={selectedReviewIds.length === 0}
+            onClick={() => {
+              if (!bulkRejectOpen) {
+                setBulkRejectOpen(true);
+                return;
+              }
+              setContentStatusById((current) => {
+                const next = { ...current };
+                selectedReviewIds.forEach((id) => {
+                  next[id] = '违规';
+                });
+                return next;
+              });
+              setRejectReasonById((current) => {
+                const next = { ...current };
+                selectedReviewIds.forEach((id) => {
+                  next[id] = bulkRejectReason;
+                });
+                return next;
+              });
+              setRejectingId(null);
+              setBulkRejectOpen(false);
+            }}
+            className="h-10 rounded-md border border-[#991b1b] px-4 text-sm font-black text-[#991b1b] disabled:cursor-not-allowed disabled:border-[#d1d5db] disabled:text-[#9ca3af]"
+          >
+            {bulkRejectOpen ? '确认批量违规' : '批量违规'}
+          </button>
+        </div>
+      </section>
+
+      <div className={`${adminCard} overflow-hidden`}>
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-[#f9fafb] text-[11px] font-black uppercase tracking-[0.12em] text-[#6b7280]">
+            <tr>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">
+                <input
+                  aria-label="全选当前列表"
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={(event) => {
+                    setSelectedReviewIds((current) => {
+                      const hiddenSelected = current.filter((id) => !filteredReviewIds.includes(id));
+                      return event.target.checked ? [...hiddenSelected, ...filteredReviewIds] : hiddenSelected;
+                    });
+                  }}
+                  className="h-4 w-4"
+                />
+              </th>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">内容</th>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">内容字段</th>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">作者 / 用户ID</th>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">发布时间</th>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">状态</th>
+              <th className="border-b border-[#e5e7eb] px-4 py-3">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f1f5f9]">
+            {filteredReviewItems.map((item) => (
+              <React.Fragment key={item.id}>
+                <tr className="bg-white">
+                  <td className="px-4 py-3 align-middle">
+                    <input
+                      aria-label={`选择 ${item.title}`}
+                      type="checkbox"
+                      checked={selectedReviewIds.includes(item.id)}
+                      onChange={(event) => {
+                        setSelectedReviewIds((current) =>
+                          event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id),
+                        );
+                      }}
+                      className="h-4 w-4"
+                    />
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <p className="font-black text-[#111827]">{item.title}</p>
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex items-center gap-3">
+                      <img src={item.mediaType === 'video' ? item.videoPoster : item.image} alt="" className="h-12 w-12 rounded-md object-cover" />
+                      <div>
+                        <StatusPill tone="neutral">{item.mediaType === 'video' ? '视频' : '图片'}</StatusPill>
+                        <p className="mt-1 line-clamp-1 max-w-[260px] text-xs font-medium text-[#6b7280]">{item.body}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <UserIdentity name={item.author} userId={item.userId} hasRing={item.hasRing} ringBound={item.ringBound} />
+                  </td>
+                  <td className="px-4 py-3 align-middle text-xs font-bold text-[#4b5563]">{item.publishedAt}</td>
+                  <td className="px-4 py-3 align-middle">
+                    <StatusPill tone={item.status === '待审核' ? 'amber' : item.status === '违规' ? 'red' : 'green'}>{item.status}</StatusPill>
+                    {rejectReasonById[item.id] && <p className="mt-1 text-xs font-bold text-[#991b1b]">{rejectReasonById[item.id]}</p>}
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex flex-wrap gap-2">
+                      {item.status === '已发布' ? (
+                        <button
+                          onClick={() => setRejectingId(rejectingId === item.id ? null : item.id)}
+                          className="h-8 rounded-md border border-[#991b1b] px-3 text-xs font-black text-[#991b1b]"
+                        >
+                          违规
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setContentStatusById((current) => ({ ...current, [item.id]: '已发布' }));
+                              setRejectingId(null);
+                            }}
+                            className="h-8 rounded-md bg-[#111827] px-3 text-xs font-black text-white"
+                          >
+                            通过
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(rejectingId === item.id ? null : item.id)}
+                            className="h-8 rounded-md border border-[#d1d5db] px-3 text-xs font-black text-[#111827]"
+                          >
+                            违规
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setDetailItemId(item.id)}
+                        className="h-8 rounded-md border border-[#d1d5db] px-3 text-xs font-black text-[#111827]"
+                      >
+                        详情
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {rejectingId === item.id && (
+                  <tr className="bg-[#fef2f2]">
+                    <td colSpan={7} className="px-4 py-4">
+                      <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+                        <AdminSelect
+                          label="选择违规原因"
+                          value={rejectReasonById[item.id] || rejectReasons[0]}
+                          onChange={(value) => setRejectReasonById((current) => ({ ...current, [item.id]: value }))}
+                          options={rejectReasons}
+                        />
+                        <button
+                          onClick={() => {
+                            setRejectReasonById((current) => ({ ...current, [item.id]: current[item.id] || rejectReasons[0] }));
+                            setContentStatusById((current) => ({ ...current, [item.id]: '违规' }));
+                            setRejectingId(null);
+                          }}
+                          className="h-10 rounded-md bg-[#991b1b] px-4 text-sm font-black text-white"
+                        >
+                          确认违规
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {detailItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/38 p-8">
+          <div className="max-h-[86vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-2xl">
+            <div className="sticky top-0 flex items-center justify-between border-b border-[#e5e7eb] bg-white px-5 py-4">
+              <div>
+                <p className={adminLabel}>作品详情</p>
+                <h2 className="text-xl font-black">{detailItem.title}</h2>
+              </div>
+              <button onClick={() => setDetailItemId(null)} className="flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="grid grid-cols-[1fr_0.9fr] gap-5 p-5">
+              <section>
+                {detailItem.mediaType === 'video' ? (
+                  <video src={detailItem.video} poster={detailItem.videoPoster} className="aspect-video w-full rounded-lg bg-black object-cover" controls />
+                ) : (
+                  <img src={detailItem.image} alt="" className="max-h-[520px] w-full rounded-lg object-cover" />
+                )}
+              </section>
+              <section className="space-y-4">
+                <div>
+                  <p className={adminLabel}>作者</p>
+                  <UserIdentity name={detailItem.author} userId={detailItem.userId} hasRing={detailItem.hasRing} ringBound={detailItem.ringBound} />
+                </div>
+                <div>
+                  <p className={adminLabel}>发布时间</p>
+                  <p className="mt-1 text-sm font-black">{detailItem.publishedAt}</p>
+                </div>
+                <div>
+                  <p className={adminLabel}>内容文字</p>
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-[#374151]">{detailItem.body}</p>
+                </div>
+                <div>
+                  <p className={adminLabel}>内容类型</p>
+                  <p className="mt-2 text-sm font-black">{detailItem.mediaType === 'video' ? '视频' : '图片'}</p>
+                </div>
+                {detailItem.mediaType === 'image' && <img src={detailItem.image} alt="" className="h-32 w-32 rounded-md object-cover" />}
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderUsers = () => (
+    <div className="space-y-4">
+      <section className={`${adminCard} grid grid-cols-[1fr_180px_auto] items-end gap-4 p-5`}>
+        <AdminField label="按用户ID" value={userKeyword} onChange={setUserKeyword} />
+        <AdminSelect label="按状态" value={userStatus} onChange={setUserStatus} options={['全部', '正常', '封禁', '风险']} />
+        <button className="h-10 rounded-md bg-[#111827] px-5 text-sm font-black text-white">筛选</button>
+      </section>
+      <AdminTable
+        headers={['用户ID', '注册时间', '状态', '头像', '性别', '设备', '内容数', '操作']}
+        rows={userRows.map(([id, time, status, avatar, gender, device, count], index) => [
+          <UserIdentity userId={String(id)} hasRing={index !== 2} ringBound={index === 0} />,
+          time,
+          <StatusPill tone={status === '正常' ? 'green' : status === '风险' ? 'amber' : 'red'}>{status}</StatusPill>,
+          <img src={String(avatar)} alt="" className="h-10 w-10 rounded-full object-cover" />,
+          gender,
+          device,
+          count,
+          renderActionButtons(status === '封禁' ? ['警告', '详情'] : ['封禁7天', '永久封禁', '警告', '详情'], String(id)),
+        ])}
+      />
+    </div>
+  );
+
+  const renderComments = () => (
+    <div className="space-y-4">
+      <section className={`${adminCard} grid grid-cols-[260px_180px_auto] items-end gap-4 p-5`}>
+        <AdminField label="按用户ID" value={commentKeyword} onChange={setCommentKeyword} />
+        <AdminSelect label="按状态" value={commentStatus} onChange={setCommentStatus} options={['全部', '已发布', '待审核', '违规']} />
+        <button className="h-10 rounded-md bg-[#111827] px-5 text-sm font-black text-white">筛选</button>
+      </section>
+      <AdminTable
+        headers={['对应内容', '评论ID', '作者 / 用户ID', '评论内容', '状态', '操作']}
+        rows={[
+          ['Morning light on the desk', 'CMT-90012', <UserIdentity name="Mia Reed" userId="100000041" ringBound />, 'Nice photo, very clean mood.', <StatusPill tone="green">已发布</StatusPill>, '已发布'],
+          ['A walk after work', 'CMT-90013', <UserIdentity name="Lynn Parker" userId="100000042" />, 'This looks suspicious.', <StatusPill tone="amber">待审核</StatusPill>, '待审核'],
+          ['Weekend table', 'CMT-90014', <UserIdentity name="Emma Clark" userId="100000045" />, 'Spam text sample.', <StatusPill tone="red">违规</StatusPill>, '违规'],
+        ]
+          .filter((row) => String((row[2] as React.ReactElement).props.userId).includes(commentKeyword) && (commentStatus === '全部' || (row[4] as React.ReactElement).props.children === commentStatus))
+          .map((row) => {
+            const status = row[5];
+            const actions = status === '待审核' ? ['通过', '违规', '详情'] : status === '已发布' ? ['违规', '详情'] : ['详情'];
+            return [...row.slice(0, 5), renderActionButtons(actions, String(row[1]))];
+          })}
+      />
+    </div>
+  );
+
+  const renderFeedback = () => (
+    <div className="space-y-4">
+      <section className={`${adminCard} grid grid-cols-[260px_180px_auto] items-end gap-4 p-5`}>
+        <AdminField label="按用户ID" value={feedbackUserId} onChange={setFeedbackUserId} />
+        <AdminSelect label="按状态" value={feedbackStatus} onChange={setFeedbackStatus} options={['全部', '已处理', '待处理', '暂不处理']} />
+        <button className="h-10 w-fit rounded-md bg-[#111827] px-5 text-sm font-black text-white">筛选</button>
+      </section>
+      <AdminTable
+        headers={['用户ID', '反馈内容', '用户名称 / 头像', '状态', '时间', '操作']}
+        rows={[
+          [<UserIdentity userId="100000041" ringBound />, <img src={FEED_ITEMS[0].image} alt="" className="h-12 w-12 rounded-md object-cover" />, <div className="flex items-center gap-2"><img src={CURRENT_USER.avatar} alt="" className="h-8 w-8 rounded-full" />Deer Morgan</div>, <StatusPill tone="amber">待处理</StatusPill>, '2026-06-15 12:20'],
+          [<UserIdentity userId="100000042" />, <StatusPill>视频</StatusPill>, <div className="flex items-center gap-2"><img src={MESSAGES[0].avatar} alt="" className="h-8 w-8 rounded-full" />Mia Reed</div>, <StatusPill tone="green">已处理</StatusPill>, '2026-06-14 09:11'],
+        ].filter((row) => String((row[0] as React.ReactElement).props.userId).includes(feedbackUserId) && (feedbackStatus === '全部' || (row[3] as React.ReactElement).props.children === feedbackStatus)).map((row) => [
+          ...row,
+          renderActionButtons((row[3] as React.ReactElement).props.children === '待处理' ? ['已处理', '暂不处理'] : ['详情'], String(row[0])),
+        ])}
+      />
+    </div>
+  );
+
+  const renderReports = () => (
+    <div className="space-y-4">
+      <section className={`${adminCard} grid grid-cols-[260px_180px_auto] items-end gap-4 p-5`}>
+        <AdminField label="按用户ID" value={reportUserId} onChange={setReportUserId} />
+        <AdminSelect label="按状态" value={reportStatus} onChange={setReportStatus} options={['全部', '待处理', '已警告', '已封禁', '暂不处理']} />
+        <button className="h-10 w-fit rounded-md bg-[#111827] px-5 text-sm font-black text-white">筛选</button>
+      </section>
+      <AdminTable
+        headers={['用户', '举报类型', '举报内容 / 对象', '被举报用户', '举报时间', '状态', '操作']}
+        rows={[
+          [
+            <UserIdentity name="Mia Reed" userId="100000041" ringBound />,
+            '疑似欺诈',
+            <div className="space-y-1"><p>External link in comment</p><StatusPill tone="amber">内容</StatusPill></div>,
+            <UserIdentity name="Lynn Parker" userId="100000042" />,
+            '2026-06-15 13:04',
+            <StatusPill tone="amber">待处理</StatusPill>,
+          ],
+          [
+            <UserIdentity name="Avery Stone" userId="100000043" hasRing={false} />,
+            '辱骂与嘲讽',
+            <div className="space-y-1"><p>Abusive profile behavior</p><StatusPill tone="red">用户</StatusPill></div>,
+            <UserIdentity name="Emma Clark" userId="100000045" />,
+            '2026-06-14 18:30',
+            <StatusPill tone="green">已警告</StatusPill>,
+          ],
+        ].filter((row) => {
+          const reporterId = String((row[0] as React.ReactElement).props.userId);
+          const reportedId = String((row[3] as React.ReactElement).props.userId);
+          return (reporterId.includes(reportUserId) || reportedId.includes(reportUserId)) && (reportStatus === '全部' || (row[5] as React.ReactElement).props.children === reportStatus);
+        }).map((row) => [
+          ...row,
+          renderActionButtons((row[5] as React.ReactElement).props.children === '待处理' ? ['封禁用户', '警告用户', '下架内容', '暂不处理', '详情'] : ['详情'], '举报记录'),
+        ])}
+      />
+    </div>
+  );
+
+  const renderAppeals = () => {
+    const appealRows = [
+      {
+        id: '100000043',
+        registeredAt: '2026-05-16 19:02',
+        appeal: 'I believe this was a mistake.',
+        banReason: '疑似欺诈',
+        userStatus: '永久封禁',
+        reviewStatus: '待处理',
+        handledAt: '-',
+        avatar: MESSAGES[1].avatar,
+        gender: '男',
+        device: 'iPhone 14',
+        hasRing: false,
+      },
+      {
+        id: '100000046',
+        registeredAt: '2026-06-01 11:20',
+        appeal: 'Please review my account.',
+        banReason: '辱骂与嘲讽',
+        userStatus: '封禁7天',
+        reviewStatus: '待处理',
+        handledAt: '-',
+        avatar: MESSAGES[0].avatar,
+        gender: '女',
+        device: 'Pixel 9',
+        ringBound: true,
+      },
+    ].map((row) => ({ ...row, ...appealStateById[row.id] }));
+
+    const toneForUserStatus = (status: string) => (status === '永久封禁' ? 'red' : status === '正常' ? 'green' : 'amber') as 'red' | 'green' | 'amber';
+    const toneForReviewStatus = (status: string) => (status === '已解封' ? 'green' : status === '已复核' ? 'red' : 'amber') as 'red' | 'green' | 'amber';
+    const handledAt = '2026-06-15 18:30';
+
+    return (
+      <div className="space-y-4">
+        <section className={`${adminCard} grid grid-cols-[220px_180px_180px_auto] items-end gap-4 p-5`}>
+          <AdminField label="按用户ID" value={appealUserId} onChange={setAppealUserId} />
+          <AdminSelect label="按用户状态" value={appealUserStatusFilter} onChange={setAppealUserStatusFilter} options={['全部', '永久封禁', '封禁7天', '正常']} />
+          <AdminSelect label="按申诉状态" value={appealStatus} onChange={setAppealStatus} options={['全部', '待处理', '已复核', '已解封']} />
+          <button className="h-10 w-fit rounded-md bg-[#111827] px-5 text-sm font-black text-white">筛选</button>
+        </section>
+        <AdminTable
+          headers={['用户ID', '注册时间', '申诉内容', '封禁原因', '用户状态', '申诉状态', '处理时间', '头像', '性别', '设备', '操作']}
+          rows={appealRows
+            .filter((row) => row.id.includes(appealUserId) && (appealUserStatusFilter === '全部' || row.userStatus === appealUserStatusFilter) && (appealStatus === '全部' || row.reviewStatus === appealStatus))
+            .map((row) => [
+              <UserIdentity userId={row.id} hasRing={row.hasRing} ringBound={row.ringBound} />,
+              row.registeredAt,
+              row.appeal,
+              row.banReason,
+              <StatusPill tone={toneForUserStatus(row.userStatus)}>{row.userStatus}</StatusPill>,
+              <StatusPill tone={toneForReviewStatus(row.reviewStatus)}>{row.reviewStatus}</StatusPill>,
+              row.handledAt,
+              <img src={row.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />,
+              row.gender,
+              row.device,
+              <div className="flex flex-wrap gap-2">
+                {row.reviewStatus === '待处理' && (
+                  <>
+                    <button
+                      onClick={() => setAppealStateById((current) => ({ ...current, [row.id]: { userStatus: row.userStatus, reviewStatus: '已复核', handledAt } }))}
+                      className={adminActionButton}
+                    >
+                      暂不处理
+                    </button>
+                    <button
+                      onClick={() => setAppealStateById((current) => ({ ...current, [row.id]: { userStatus: '正常', reviewStatus: '已解封', handledAt } }))}
+                      className="h-8 rounded-md bg-[#111827] px-3 text-xs font-black text-white"
+                    >
+                      解封
+                    </button>
+                  </>
+                )}
+                <button onClick={() => openAdminAction('详情', `申诉记录 ${row.id}`)} className={adminActionButton}>详情</button>
+              </div>,
+            ])}
+        />
+      </div>
+    );
+  };
+
+  const renderPermissions = () => {
+    const permissionRows = [
+      ['总览', ['访问']],
+      ['App 基础配置', ['访问', '保存']],
+      ['内容管理', ['访问', '筛选', '通过', '违规', '详情', '批量通过', '批量违规']],
+      ['评论管理', ['访问', '筛选', '通过', '违规', '详情']],
+      ['用户管理', ['访问', '筛选', '封禁7天', '永久封禁', '警告', '详情']],
+      ['用户反馈', ['访问', '筛选', '已处理', '暂不处理', '详情']],
+      ['举报审核', ['访问', '筛选', '封禁用户', '警告用户', '下架内容', '暂不处理', '详情']],
+      ['申诉审核', ['访问', '筛选', '解封', '暂不处理', '详情']],
+      ['权限管理', ['访问', '创建角色', '配置菜单', '配置操作']],
+      ['消息管理', ['访问', '筛选', '违规', '详情']],
+    ];
+
+    return (
+      <div className="grid grid-cols-[0.8fr_1.2fr] gap-4">
+        <section className={`${adminCard} space-y-4 p-5`}>
+          <h2 className="text-lg font-black">角色</h2>
+          <AdminField label="角色名称" value={roleName} onChange={setRoleName} />
+          <AdminTable headers={['角色', '成员数', '状态']} rows={[['超级管理员', 3, <StatusPill tone="green">启用</StatusPill>], [roleName, 12, <StatusPill tone="green">启用</StatusPill>], ['客服', 8, <StatusPill>启用</StatusPill>]]} />
+        </section>
+        <section className={`${adminCard} p-5`}>
+          <h2 className="text-lg font-black">菜单与操作权限</h2>
+          <div className="mt-4 space-y-3">
+            {permissionRows.map(([menu, actions]) => (
+              <div key={String(menu)} className="grid grid-cols-[120px_1fr] gap-3 rounded-md border border-[#e5e7eb] px-4 py-3">
+                <span className="pt-1 text-sm font-black">{menu}</span>
+                <div className="flex flex-wrap gap-3">
+                  {(actions as string[]).map((action) => (
+                    <label key={action} className="flex items-center gap-2 rounded-md border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-xs font-bold text-[#4b5563]">
+                      <input type="checkbox" defaultChecked />
+                      {action}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  };
+
+  const renderMessages = () => (
+    <div className="space-y-4">
+      <section className={`${adminCard} grid grid-cols-[260px_180px_auto] items-end gap-4 p-5`}>
+        <AdminField label="按用户ID" value={messageUserId} onChange={setMessageUserId} />
+        <AdminSelect label="按违规类型" value={messageViolationType} onChange={setMessageViolationType} options={['全部', '政治', '低俗', '涉黄', '骚扰', '广告欺诈']} />
+        <button className="h-10 w-fit rounded-md bg-[#111827] px-5 text-sm font-black text-white">筛选</button>
+      </section>
+      <AdminTable
+        headers={['用户名 / 用户ID', '消息内容', '发送时间', '违规类型', '操作']}
+        rows={[
+          [<UserIdentity name="Mia Reed" userId="100000041" ringBound />, 'Please visit this external promo link.', '2026-06-15 14:20', <StatusPill tone="red">广告欺诈</StatusPill>],
+          [<UserIdentity name="Lynn Parker" userId="100000042" />, 'Harassing message sample.', '2026-06-15 12:05', <StatusPill tone="amber">骚扰</StatusPill>],
+          [<UserIdentity name="Avery Stone" userId="100000043" hasRing={false} />, 'Sensitive political content sample.', '2026-06-14 20:44', <StatusPill tone="red">政治</StatusPill>],
+        ].filter((row) => {
+          const userId = String((row[0] as React.ReactElement).props.userId);
+          const violationType = String((row[3] as React.ReactElement).props.children);
+          return userId.includes(messageUserId) && (messageViolationType === '全部' || violationType === messageViolationType);
+        }).map((row) => [...row, renderActionButtons(['违规', '详情'], '消息记录')])}
+      />
+    </div>
+  );
+
+  const renderSmartRing = () => (
+    <div className="grid grid-cols-[0.9fr_1.1fr] gap-4">
+      <section className={`${adminCard} space-y-4 p-5`}>
+        <h2 className="text-lg font-black">智能戒指占位</h2>
+        <AdminToggle checked={smartRingEnabled} onChange={setSmartRingEnabled} label="展示入口" description="保持底部第二个入口为智能戒指。" />
+        <AdminSelect label="上线状态" value="占位中" onChange={() => {}} options={['占位中', '内部测试', '公开测试', '已上线']} />
+        <AdminField label="空状态标题" value="Smart Ring is not configured yet" onChange={() => {}} />
+        <AdminField label="空状态说明" value="This section is intentionally empty until the product direction is confirmed." onChange={() => {}} />
+      </section>
+      <section className={`${adminCard} p-5`}>
+        <h2 className="text-lg font-black">未来配置槽位</h2>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {['设备绑定', '健康指标', '睡眠看板', '活动趋势', '固件升级', '通知同步'].map((item) => (
+            <div key={item} className="rounded-md border border-dashed border-[#d1d5db] p-4">
+              <p className="text-sm font-black">{item}</p>
+              <p className="mt-1 text-xs font-medium text-[#6b7280]">预留</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderModeration = () => (
+    <div className="grid grid-cols-[1fr_1fr] gap-4">
+      <section className={`${adminCard} space-y-3 p-5`}>
+        <h2 className="text-lg font-black">安全与审核</h2>
+        <AdminToggle checked={true} onChange={() => {}} label="图片审核" description="内容大范围分发前先过图像审核。" />
+        <AdminToggle checked={true} onChange={() => {}} label="文本审核" description="扫描标题、评论、资料等文本。" />
+        <AdminToggle checked={true} onChange={() => {}} label="举报队列" description="允许用户举报内容和账号。" />
+        <AdminToggle checked={false} onChange={() => {}} label="关系类举报" description="已关闭，因为关系模块已移除。" />
+      </section>
+      <AdminTable
+        headers={['队列', '待处理', '时限', '负责人']}
+        rows={[
+          ['内容举报', '14', '4h', '风控团队'],
+          ['账号举报', '9', '8h', '风控团队'],
+          ['垃圾内容复核', '31', '24h', '运营团队'],
+          ['申诉', '3', '48h', '客服团队'],
+        ]}
+      />
+    </div>
+  );
+
+  const renderLanguage = () => (
+    <div className="grid grid-cols-[0.9fr_1.1fr] gap-4">
+      <section className={`${adminCard} space-y-4 p-5`}>
+        <h2 className="text-lg font-black">语言策略</h2>
+        <AdminSelect label="前台默认语言" value={defaultLanguage} onChange={setDefaultLanguage} options={['英文']} />
+        <AdminSelect label="市场区域" value={region} onChange={setRegion} options={['全球', '美国', '新加坡', '英国']} />
+        <AdminToggle checked={true} onChange={() => {}} label="前台仅英文" description="用户侧产品文案保持英文。" />
+        <AdminToggle checked={true} onChange={() => {}} label="屏蔽旧玩法词" description="防止已删除的玩法词回到前台。" />
+      </section>
+      <section className={`${adminCard} p-5`}>
+        <h2 className="text-lg font-black">前台禁用词</h2>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {['CP', 'single mode', 'collaboration gameplay', 'points', 'credits', 'diamonds', 'virtual gifts', 'relationship binding', 'soulmate signal'].map((term) => (
+            <span key={term}>
+              <StatusPill tone="red">{term}</StatusPill>
+            </span>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderActiveSection = () => {
+    if (active === 'overview') return renderOverview();
+    if (active === 'app') return renderApp();
+    if (active === 'content') return renderContent();
+    if (active === 'comments') return renderComments();
+    if (active === 'users') return renderUsers();
+    if (active === 'feedback') return renderFeedback();
+    if (active === 'reports') return renderReports();
+    if (active === 'appeals') return renderAppeals();
+    if (active === 'permissions') return renderPermissions();
+    if (active === 'messages') return renderMessages();
+    if (active === 'smart-ring') return renderSmartRing();
+    if (active === 'moderation') return renderModeration();
+    if (active === 'language') return renderLanguage();
+    return renderOverview();
+  };
+
+  const activeLabel = navItems.find((item) => item.id === active)?.label || '总览';
 
   return (
-    <nav className={`absolute bottom-0 left-0 right-0 h-[96px] backdrop-blur-xl flex items-center justify-between px-4 z-50 pb-6 ${
-      isLightNav
-        ? 'bg-[#f7f3ec]/95 border-t border-[#e8dfd2] shadow-[0_-10px_30px_rgba(99,77,56,0.08)]'
-        : 'bg-dark/95 border-t border-white/[0.03]'
-    }`}>
-      <div className="flex flex-1 justify-around">
-        {navItems.map((item) => (
+    <div className="min-h-screen bg-[#f3f4f6] text-[#111827]">
+      <aside className="fixed inset-y-0 left-0 flex w-72 flex-col border-r border-[#e5e7eb] bg-white">
+        <div className="flex h-16 items-center gap-3 border-b border-[#e5e7eb] px-5">
+          <Logo size={34} className="rounded-md" />
+          <div>
+            <p className="text-sm font-black leading-none">DRcircle 后台</p>
+            <p className="mt-1 text-[11px] font-bold text-[#6b7280]">配置中心</p>
+          </div>
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = active === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActive(item.id)}
+                className={`flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-black transition-colors ${
+                  isActive ? 'bg-[#111827] text-white' : 'text-[#4b5563] hover:bg-[#f3f4f6] hover:text-[#111827]'
+                }`}
+              >
+                <Icon size={17} />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <main className="ml-72 min-h-screen">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[#e5e7eb] bg-white/92 px-8 backdrop-blur-xl">
+          <div>
+            <p className={adminLabel}>后台模块</p>
+            <h1 className="text-xl font-black">{activeLabel}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <StatusPill tone="green">旧玩法已移除</StatusPill>
+            <StatusPill tone="green">前台英文</StatusPill>
+          </div>
+        </header>
+        <div className="p-8">{renderActiveSection()}</div>
+      </main>
+      {adminAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/38 p-8">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-2xl">
+            <p className={adminLabel}>操作确认</p>
+            <h2 className="mt-2 text-lg font-black">{adminAction.action === '详情' ? '详情' : `确定执行「${adminAction.action}」吗？`}</h2>
+            <p className="mt-2 text-sm font-bold text-[#6b7280]">目标：{adminAction.target}</p>
+            {adminAction.needsReason && (
+              <div className="mt-4">
+                <AdminSelect label="选择违规原因" value={bulkRejectReason} onChange={setBulkRejectReason} options={rejectReasons} />
+              </div>
+            )}
+            {adminAction.action === '详情' && (
+              <div className="mt-4 rounded-md bg-[#f9fafb] p-4 text-sm font-medium leading-relaxed text-[#374151]">
+                展示该记录的完整内容、用户信息、处理记录和相关媒体。
+              </div>
+            )}
+            <div className="mt-5 flex justify-end gap-3">
+              <button onClick={() => setAdminAction(null)} className="h-10 rounded-md border border-[#d1d5db] px-4 text-sm font-black text-[#111827]">
+                取消
+              </button>
+              <button onClick={() => setAdminAction(null)} className="h-10 rounded-md bg-[#111827] px-4 text-sm font-black text-white">
+                {adminAction.action === '详情' ? '关闭' : '确认'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BottomNav({
+  active,
+  setScreen,
+}: {
+  active: Screen;
+  setScreen: (screen: Screen) => void;
+}) {
+  const items = [
+    { id: 'home' as const, label: 'Home', icon: Home },
+    { id: 'smart-ring' as const, label: 'Smart Ring', icon: ShieldCheck },
+    { id: 'messages' as const, label: 'Messages', icon: MessageCircle },
+    { id: 'me' as const, label: 'Me', icon: UserIcon },
+  ];
+
+  return (
+    <nav className="absolute inset-x-0 bottom-0 z-50 flex h-[96px] items-center justify-around border-t border-[#e8dfd2] bg-[#f7f3ec]/96 px-4 pb-6 shadow-[0_-10px_30px_rgba(99,77,56,0.08)] backdrop-blur-xl">
+      {items.map((item) => {
+        const Icon = item.icon;
+        const isActive = active === item.id;
+        return (
           <button
             key={item.id}
             onClick={() => setScreen(item.id)}
-            className={getNavButtonClass(item.id)}
+            className={`flex h-14 min-w-16 flex-col items-center justify-center gap-1 rounded-xl transition-colors ${
+              isActive ? 'text-[#241f1b]' : 'text-[#a79584]'
+            }`}
           >
-            <item.icon size={20} className={active === item.id ? (isLightNav ? 'text-[#2f261d] fill-[#2f261d]/10' : 'text-white fill-white/10') : ''} strokeWidth={active === item.id ? 2.5 : 2} />
-            <span className={getNavLabelClass(item.id)}>
-              {item.label}
-            </span>
-            {active === item.id && (
-              <motion.div layoutId="navIndicator" className={indicatorClass} />
-            )}
+            <Icon size={20} strokeWidth={isActive ? 2.6 : 2} />
+            <span className="text-[10px] font-black">{item.label}</span>
+            {isActive && <span className="h-1 w-1 rounded-full bg-[#241f1b]" />}
           </button>
-        ))}
-      </div>
-
-      <button
-        onClick={onPlusClick}
-        className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all z-50 ${
-          isLightNav
-            ? 'bg-[#FE2C55] text-white shadow-[0_10px_20px_rgba(254,44,85,0.22)]'
-            : 'border-dark bg-white text-dark'
-        }`}
-      >
-        <Plus size={28} strokeWidth={3.2} />
-      </button>
-
-      <div className="flex flex-1 justify-around">
-        {rightNavItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setScreen(item.id)}
-            className={getNavButtonClass(item.id)}
-          >
-            <item.icon size={20} className={active === item.id ? (isLightNav ? 'text-[#2f261d] fill-[#2f261d]/10' : 'text-white fill-white/10') : ''} strokeWidth={active === item.id ? 2.5 : 2} />
-            <span className={getNavLabelClass(item.id)}>
-              {item.label}
-            </span>
-            {active === item.id && (
-              <motion.div layoutId="navIndicator" className={indicatorClass} />
-            )}
-          </button>
-        ))}
-      </div>
+        );
+      })}
     </nav>
   );
-};
+}
 
-// --- Home Screen ---
-
-const HomeScreen = ({
-  setScreen,
-  setSelectedTopic,
-  topics,
-  savedTopicIds,
-  toggleFavorite,
-  likedTopicIds,
-  toggleLike,
-  setSelectedUserName,
-  spotlightTopicIds,
-  spotlightTopic,
-  showToast,
-  showGrowthPrompt,
-  dismissGrowthPrompt,
-  setCircleInitialTopicId,
-  onOpenContent,
+function EmptyState({
+  title,
+  body,
+  icon,
 }: {
-  setScreen: (s: Screen) => void,
-  setSelectedTopic: (t: Topic) => void,
-  topics: Topic[],
-  savedTopicIds: Set<string>,
-  toggleFavorite: (id: string) => void,
-  likedTopicIds: Set<string>,
-  toggleLike: (id: string) => void,
-  setSelectedUserName: (name: string) => void,
-  spotlightTopicIds: Set<string>,
-  spotlightTopic: (id: string) => void,
-  showToast: (m: string) => void,
-  showGrowthPrompt: boolean,
-  dismissGrowthPrompt: () => void,
-  setCircleInitialTopicId: (id: string | undefined) => void,
-  onOpenContent: (item: HomeFeedItem) => void,
-}) => {
-  const [homeTab, setHomeTab] = useState<'推荐' | '关注'>('推荐');
-  const [hiddenSuggestedCreators, setHiddenSuggestedCreators] = useState<Set<string>>(new Set());
-  const [followedSuggestedCreators, setFollowedSuggestedCreators] = useState<Set<string>>(new Set());
-  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
-  const feedItems = topics.flatMap((topic, topicIndex) =>
-    [0, 1].map((variant) => {
-      const mediaIndex = (topicIndex * 2 + variant) % dailyLifeFrames.length;
-      return {
-        id: `${topic.id}-${variant}`,
-        topic,
-        mediaIndex,
-        title: variant === 0 ? topic.title : dailyLifeCaptions[mediaIndex],
-        author: dailyLifeUsers[mediaIndex],
-        kind: variant === 0 ? 'collab' : topicIndex % 3 === 0 ? 'cp' : topicIndex % 2 === 0 ? 'video' : 'image',
-        heightClass: 'aspect-[4/5]',
-        imageCount: variant !== 0 && topicIndex % 3 !== 0 && topicIndex % 2 !== 0 ? 3 + (topicIndex % 3) : undefined,
-      } satisfies HomeFeedItem;
-    })
+  title: string;
+  body: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center px-7 text-center">
+      <div className="max-w-[280px]">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-[#6f6256] shadow-sm">
+          {icon}
+        </div>
+        <h2 className="mt-5 text-2xl font-black tracking-tight">{title}</h2>
+        <p className="mt-3 text-sm font-bold leading-relaxed text-[#8f7f6d]">{body}</p>
+      </div>
+    </div>
   );
-  const followedAuthorNames = followedSuggestedCreators;
-  const priorityFeedItems = (['collab', 'cp', 'video', 'image'] as const)
-    .map(kind => feedItems.find(item => item.kind === kind))
-    .filter((item): item is typeof feedItems[number] => Boolean(item));
-  const priorityFeedItemIds = new Set(priorityFeedItems.map(item => item.id));
-  const prioritizedFeedItems = [
-    ...priorityFeedItems,
-    ...feedItems.filter(item => !priorityFeedItemIds.has(item.id)),
-  ];
-  const visibleFeedItems = homeTab === '关注'
-    ? prioritizedFeedItems
-    : prioritizedFeedItems;
-  const feedColumns = visibleFeedItems.reduce<[typeof visibleFeedItems, typeof visibleFeedItems]>((columns, item, index) => {
-    columns[index % 2].push(item);
-    return columns;
-  }, [[], []]);
-  const visibleSuggestedCreators = suggestedCreators.filter(author => !hiddenSuggestedCreators.has(author.name));
-  const featuredTopics = topics.filter(t => t.status !== 'completed').slice(0, 5);
-  const activeFeaturedTopic = featuredTopics[activeFeaturedIndex % Math.max(featuredTopics.length, 1)] || topics[0];
-  const featuredTopic = activeFeaturedTopic;
+}
 
-  useEffect(() => {
-    if (homeTab !== '推荐' || featuredTopics.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setActiveFeaturedIndex(prev => (prev + 1) % featuredTopics.length);
-    }, 3600);
-    return () => window.clearInterval(timer);
-  }, [featuredTopics.length, homeTab]);
-
-  const handleHideSuggestedCreator = (name: string) => {
-    setHiddenSuggestedCreators(prev => new Set(prev).add(name));
-  };
-  const handleFollowSuggestedCreator = (name: string) => {
-    setFollowedSuggestedCreators(prev => new Set(prev).add(name));
-    showToast(`已关注 ${name}`);
-  };
+function HomeScreen({
+  openItem,
+}: {
+  openItem: (item: FeedItem) => void;
+}) {
+  const featured = FEED_ITEMS[0];
 
   return (
-    <div className="flex flex-col h-full bg-[#f7f3ec] font-sans pt-8 relative overflow-hidden text-[#2f261d]">
-      <header className="sticky top-0 z-30 flex items-center justify-start bg-[#f7f3ec]/92 px-4 pb-3 pt-4 backdrop-blur-xl">
-        <div className="flex items-center gap-5">
-          {(['推荐', '关注'] as const).map(tab => (
+    <div className={pageRoot}>
+      <header className="sticky top-0 z-30 bg-[#f7f3ec]/94 px-5 pb-3 pt-4 backdrop-blur-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#9b8a79]">DRcircle</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight">Today</h1>
+          </div>
+          <button className={iconButton} aria-label="Notifications">
+            <Bell size={19} />
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-4 pb-32 pt-2 no-scrollbar">
+        <button
+          onClick={() => openItem(featured)}
+          className="relative h-48 w-full overflow-hidden rounded-[22px] bg-black text-left shadow-[0_18px_38px_rgba(47,38,29,0.16)] active:scale-[0.99] transition-transform"
+        >
+          <img src={featured.image} alt="" className="h-full w-full object-cover opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/18 to-transparent" />
+          <div className="absolute bottom-5 left-5 right-5 text-white">
+            <span className="rounded-full bg-white/16 px-3 py-1 text-[10px] font-black backdrop-blur-md">Featured</span>
+            <h2 className="mt-3 text-2xl font-black leading-tight">{featured.title}</h2>
+            <p className="mt-1 text-xs font-bold text-white/70">{featured.description}</p>
+          </div>
+        </button>
+
+        <section className="mt-5 grid grid-cols-2 gap-3">
+          {FEED_ITEMS.map((item) => (
             <button
-              key={tab}
-              onClick={() => setHomeTab(tab)}
-              className={`relative h-10 px-1 text-[16px] font-black transition-colors ${
-                homeTab === tab ? 'text-[#2f261d]' : 'text-[#9d8c7a]'
-              }`}
+              key={item.id}
+              onClick={() => openItem(item)}
+              className="overflow-hidden rounded-[18px] border border-[#eadfce] bg-white text-left shadow-[0_10px_26px_rgba(103,81,58,0.08)] active:scale-[0.98] transition-transform"
             >
-              {tab}
-              {homeTab === tab && (
-                <motion.span
-                  layoutId="homeFeedTab"
-                  className="absolute bottom-0 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-[#FE2C55]"
-                />
+              <div className="relative aspect-[4/5] overflow-hidden bg-[#eadfce]">
+                <img src={item.image} alt="" className="h-full w-full object-cover" />
+                <span className="absolute left-2 top-2 rounded-full bg-black/52 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-md">
+                  {item.category}
+                </span>
+              </div>
+              <div className="p-3">
+                <h3 className="line-clamp-2 text-[13px] font-black leading-snug">{item.title}</h3>
+                <p className="mt-2 truncate text-[10px] font-bold text-[#8f7f6d]">{item.location}</p>
+              </div>
+            </button>
+          ))}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function ContentDetailScreen({
+  item,
+  setScreen,
+}: {
+  item: FeedItem;
+  setScreen: (screen: Screen) => void;
+}) {
+  return (
+    <div className="flex h-full flex-col bg-[#fffaf4] pt-8 text-[#241f1b]">
+      <header className={headerRoot}>
+        <button onClick={() => setScreen('home')} className={iconButton} aria-label="Back">
+          <ArrowLeft size={20} />
+        </button>
+        <h2 className="truncate text-sm font-black">{item.category}</h2>
+        <button className={iconButton} aria-label="More">
+          <MoreHorizontal size={20} />
+        </button>
+      </header>
+
+      <main className="flex-1 overflow-y-auto pb-8 no-scrollbar">
+        <section className="bg-black">
+          <img src={item.image} alt="" className="max-h-[520px] w-full object-cover" />
+        </section>
+        <section className="space-y-5 px-5 py-5">
+          <div>
+            <h1 className="text-2xl font-black leading-tight">{item.title}</h1>
+            <p className="mt-2 text-sm font-bold leading-relaxed text-[#6f6256]">{item.description}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[item.category, item.location, item.author].map((tag) => (
+              <span key={tag} className="rounded-full bg-[#f2e8dc] px-3 py-1 text-[11px] font-black text-[#8f7f6d]">
+                {tag}
+              </span>
+            ))}
+          </div>
+          <button className={primaryButton}>Save</button>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function SmartRingPlaceholder() {
+  return (
+    <div className={pageRoot}>
+      <header className={headerRoot}>
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#9b8a79]">Module</p>
+          <h1 className="text-xl font-black">Smart Ring</h1>
+        </div>
+        <button className={iconButton} aria-label="Settings">
+          <Settings size={19} />
+        </button>
+      </header>
+      <EmptyState
+        icon={<ShieldCheck size={30} />}
+        title="Smart Ring is not configured yet"
+        body="This section is intentionally empty until the product direction is confirmed."
+      />
+    </div>
+  );
+}
+
+function MessagesScreen({
+  openThread,
+}: {
+  openThread: (thread: MessageThread) => void;
+}) {
+  return (
+    <div className={pageRoot}>
+      <header className={headerRoot}>
+        <h1 className="text-xl font-black">Messages</h1>
+        <button className={iconButton} aria-label="Search">
+          <Search size={19} />
+        </button>
+      </header>
+      <main className="flex-1 overflow-y-auto px-4 pb-32 pt-4 no-scrollbar">
+        <div className="space-y-3">
+          {MESSAGES.map((thread) => (
+            <button
+              key={thread.id}
+              onClick={() => openThread(thread)}
+              className="flex w-full items-center gap-3 rounded-[18px] border border-[#eadfce] bg-white p-4 text-left shadow-sm active:scale-[0.99] transition-transform"
+            >
+              <img src={thread.avatar} alt="" className="h-12 w-12 rounded-full bg-[#f6ede3] object-cover" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="truncate text-sm font-black">{thread.name}</h3>
+                  <span className="text-[10px] font-bold text-[#a79584]">{thread.time}</span>
+                </div>
+                <p className="mt-1 truncate text-xs font-bold text-[#8f7f6d]">{thread.lastMessage}</p>
+              </div>
+              {thread.unread > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#241f1b] px-1 text-[10px] font-black text-white">
+                  {thread.unread}
+                </span>
               )}
             </button>
           ))}
         </div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-3 pb-32 pt-1">
-        {homeTab === '推荐' && (
-          <section className="mb-4">
-            <div className="relative h-44 overflow-hidden rounded-[20px] bg-black text-white shadow-[0_18px_38px_rgba(47,38,29,0.16)]">
-              <AnimatePresence initial={false} mode="popLayout">
-                <motion.button
-                  key={activeFeaturedTopic.id}
-                  initial={{ opacity: 0, x: 46, scale: 0.98 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -36, scale: 0.98 }}
-                  transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={() => {
-                    setSelectedTopic(activeFeaturedTopic);
-                    setScreen('topic-detail');
-                  }}
-                  className="absolute inset-0 text-left active:scale-[0.99] transition-transform"
-                >
-                  <motion.img
-                    src={activeFeaturedTopic.image || dailyLifeFrames[activeFeaturedIndex % dailyLifeFrames.length]}
-                    alt=""
-                    className="h-full w-full object-cover opacity-88"
-                    initial={{ scale: 1.06 }}
-                    animate={{ scale: 1.12 }}
-                    transition={{ duration: 3.6, ease: 'linear' }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/72 via-black/18 to-black/20" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/18 to-transparent" />
-                  <span
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedTopic(activeFeaturedTopic);
-                      setScreen('join');
-                    }}
-                    className="absolute right-3 top-3 rounded-full bg-white px-3 py-1.5 text-[10px] font-black text-[#2f261d] shadow-lg active:scale-95 transition-transform"
-                  >
-                    参与共创
-                  </span>
-                  <div className="absolute left-4 right-4 bottom-4">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="rounded-full bg-white/16 px-3 py-1 text-[10px] font-black backdrop-blur-md">热门共创</span>
-                    </div>
-                    <h2 className="text-xl font-black leading-tight">{activeFeaturedTopic.title}</h2>
-                    <p className="mt-1 line-clamp-1 text-[12px] font-bold text-white/68">{activeFeaturedTopic.description}</p>
-                  </div>
-                </motion.button>
-              </AnimatePresence>
-
-              <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center gap-1.5">
-                {featuredTopics.map((dotTopic, dotIndex) => (
-                  <button
-                    key={`featured-dot-${dotTopic.id}`}
-                    onClick={() => setActiveFeaturedIndex(dotIndex)}
-                    className={`h-1.5 rounded-full transition-all ${dotIndex === activeFeaturedIndex ? 'w-4 bg-[#FE2C55]' : 'w-1.5 bg-white/55'}`}
-                    aria-label={`切换到${dotTopic.title}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {homeTab === '关注' && (
-          <section className="mb-4 text-[#2f261d]">
-            <div className="overflow-hidden rounded-[22px] border border-[#eadfce] bg-white shadow-[0_14px_32px_rgba(103,81,58,0.08)]">
-              <div className="border-b border-[#f1eee9] px-6 pb-11 pt-11 text-center">
-                <h2 className="text-[26px] font-black tracking-tight">还没有关注的人</h2>
-                <p className="mt-4 text-[16px] font-bold text-[#a39a91]">关注更多人，在这里查看 TA 的最新动态</p>
-              </div>
-
-              <div className="px-4 pb-5 pt-6">
-                <div className="mb-5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[18px] font-black text-[#4a4540]">你可能感兴趣的人</h3>
-                    <Info size={17} className="text-[#a9a29a]" />
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {visibleSuggestedCreators.map(author => {
-                    const isFollowed = followedSuggestedCreators.has(author.name);
-                    return (
-                      <div key={author.name} className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            setSelectedUserName(author.name);
-                            setScreen('user-profile');
-                          }}
-                          className="h-[58px] w-[58px] shrink-0 overflow-hidden rounded-full bg-[#f6ede3]"
-                        >
-                          <img src={author.avatar} alt="" className="h-full w-full object-cover" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedUserName(author.name);
-                            setScreen('user-profile');
-                          }}
-                          className="min-w-0 flex-1 text-left"
-                        >
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <p className="truncate text-[16px] font-black leading-tight text-[#3c3834]">{author.name}</p>
-                            {author.verified && (
-                              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#FE2C55] text-white">
-                                <Check size={10} strokeWidth={4} />
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => handleFollowSuggestedCreator(author.name)}
-                          className={`h-10 shrink-0 rounded-full border px-5 text-[15px] font-black active:scale-95 transition-all ${
-                            isFollowed
-                              ? 'border-[#ded4c7] bg-[#f4eee6] text-[#9b938b]'
-                              : 'border-[#FE2C55] bg-white text-[#FE2C55]'
-                          }`}
-                        >
-                          {isFollowed ? '已关注' : '关注'}
-                        </button>
-                        <button
-                          onClick={() => handleHideSuggestedCreator(author.name)}
-                          className="flex h-10 w-8 shrink-0 items-center justify-center text-[#9b938b] active:scale-95 transition-transform"
-                          aria-label={`不再推荐 ${author.name}`}
-                        >
-                          <X size={23} strokeWidth={1.8} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {visibleFeedItems.length > 0 && (
-          <section className="grid grid-cols-2 gap-3 items-start">
-            {feedColumns.map((column, columnIndex) => (
-              <div key={`feed-column-${columnIndex}`} className="flex flex-col gap-3">
-                {column.map((item) => {
-                  const isLiked = likedTopicIds.has(item.topic.id);
-                  return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onOpenContent(item);
-                }}
-                className="group overflow-hidden rounded-[18px] bg-white text-left shadow-[0_10px_26px_rgba(103,81,58,0.08)] border border-[#eadfce] active:scale-[0.98] transition-transform"
-              >
-	                <div className={`relative ${item.heightClass} flex items-center justify-center overflow-hidden bg-[#eadfce]`}>
-                    {item.kind === 'collab' || item.kind === 'cp' ? (
-                      <div className="grid h-full w-full grid-cols-2 grid-rows-6 gap-px bg-black">
-                        {Array.from({ length: 12 }).map((_, frameIndex) => {
-                          const frameSeed = (item.mediaIndex + frameIndex) % dailyLifeFrames.length;
-                          return (
-                            <div key={frameIndex} className="relative overflow-hidden bg-[#e6ddd2]">
-                              <img
-                                src={dailyLifeFrames[frameSeed]}
-                                alt=""
-                                className="h-full w-full object-cover transition-transform duration-500 group-active:scale-105"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/62 via-black/12 to-black/18" />
-                              <div className="absolute inset-x-1.5 top-1/2 -translate-y-1/2">
-                                <p className="line-clamp-2 text-center text-[10px] font-black leading-tight text-white drop-shadow-[0_2px_7px_rgba(0,0,0,0.58)]">
-                                  {dailyLifeCaptions[frameSeed]}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : item.kind === 'video' ? (
-                      <video
-                        src={dailyLifeVideos[item.mediaIndex]}
-                        poster={dailyLifeFrames[item.mediaIndex]}
-                        className="h-full w-full object-cover transition-transform duration-500 group-active:scale-105"
-                        muted
-                        loop
-                        playsInline
-                        preload="metadata"
-                      />
-                    ) : (
-                      <img src={dailyLifeFrames[item.mediaIndex]} alt="" className="h-full w-full object-cover transition-transform duration-500 group-active:scale-105" />
-                    )}
-                    {item.kind === 'collab' && (
-                      <span className="absolute right-2 top-2 rounded-full bg-black/58 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur-md">
-                        共创
-                      </span>
-                    )}
-                    {item.kind === 'cp' && (
-                      <span className="absolute right-2 top-2 rounded-full bg-[#FE2C55]/90 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur-md">
-                        CP
-                      </span>
-                    )}
-                    {item.kind === 'video' && (
-                      <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/58 text-white shadow-sm backdrop-blur-md">
-                        <Play size={13} className="ml-0.5 fill-current" strokeWidth={3} />
-                      </span>
-                    )}
-                    {(item.kind === 'video' || item.kind === 'image') && (
-                      <span className="absolute bottom-2 left-2 flex max-w-[78%] items-center gap-1 rounded-full bg-black/58 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur-md">
-                        <MapPin size={11} />
-                        <span className="truncate">{dailyLifeLocations[item.mediaIndex % dailyLifeLocations.length]}</span>
-                      </span>
-                    )}
-	                  <div className="absolute inset-0 bg-gradient-to-t from-black/42 via-transparent to-black/5" />
-	                </div>
-                <div className="p-3">
-                  <h3 className="line-clamp-2 text-[13px] font-black leading-snug text-[#2f261d]">{item.title}</h3>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    {item.kind === 'collab' || item.kind === 'cp' ? (
-                      <div className="flex min-w-0 items-center">
-                        {Array.from({ length: Math.min(5, item.topic.joinedCount) }).map((_, avatarIndex) => {
-                          const name = dailyLifeUsers[(item.mediaIndex + avatarIndex) % dailyLifeUsers.length];
-                          return (
-                            <img
-                              key={`${item.id}-creator-${name}-${avatarIndex}`}
-                              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`}
-                              alt=""
-                              className={`h-5 w-5 shrink-0 rounded-full border border-white bg-[#f6ede3] ${avatarIndex > 0 ? '-ml-1.5' : ''}`}
-                            />
-                          );
-                        })}
-                        {item.topic.joinedCount > 5 && (
-                          <span className="-ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-white bg-[#f2e7db] px-1 text-[8px] font-black text-[#8f7f6d]">
-                            +{item.topic.joinedCount - 5}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.author}`} alt="" className="h-5 w-5 shrink-0 rounded-full bg-[#f6ede3]" />
-                        <span className="truncate text-[10px] font-bold text-[#8f7f6d]">{item.author}</span>
-                      </div>
-                    )}
-                    <span className={`flex items-center gap-1 text-[10px] font-black ${isLiked ? 'text-[#FE2C55]' : 'text-[#b0a08e]'}`}>
-                      <Heart size={11} className={isLiked ? 'fill-current' : ''} />
-                      {item.topic.likes}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            );
-                })}
-              </div>
-            ))}
-          </section>
-        )}
       </main>
-
-      <AnimatePresence>
-        {showGrowthPrompt && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={dismissGrowthPrompt}
-            className="absolute inset-0 z-[120] bg-black/35 backdrop-blur-sm flex items-center justify-center p-5"
-          >
-            <motion.div
-              initial={{ y: 28, opacity: 0, scale: 0.98 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 28, opacity: 0, scale: 0.98 }}
-              transition={{ type: 'spring', damping: 24, stiffness: 220 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-[360px] rounded-[24px] bg-[#fffaf4] px-5 pt-5 pb-6 text-[#2f261d] shadow-[0_24px_70px_rgba(78,56,35,0.24)]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#b4834a]">今日成长</p>
-                  <h3 className="mt-1 text-2xl font-black tracking-tight">2/3 已完成</h3>
-                  <p className="mt-1 text-[12px] font-bold text-[#8f7f6d]">参与一个待成圈话题，就能点亮今日记录。</p>
-                </div>
-                <button
-                  onClick={dismissGrowthPrompt}
-                  className="w-9 h-9 rounded-full bg-white text-[#7b6b5c] shadow-sm flex items-center justify-center active:scale-95 transition-transform shrink-0"
-                  aria-label="关闭"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <button
-                onClick={() => {
-                  setSelectedTopic(featuredTopic);
-                  dismissGrowthPrompt();
-                  setScreen('topic-detail');
-                }}
-                className="mt-5 w-full rounded-[18px] bg-white px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-black text-[#8f7f6d]">最接近成圈</p>
-                    <p className="mt-1 text-sm font-black text-[#2f261d]">{featuredTopic.title}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-[#b4834a]">{featuredTopic.joinedCount}/{featuredTopic.targetCount}</p>
-                    <p className="text-[9px] font-black text-[#aa9a86]">人数</p>
-                  </div>
-                </div>
-                <div className="mt-4 h-2 rounded-full bg-[#ebe2d4] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#edbd79] to-[#ff2e67]"
-                    style={{ width: `${Math.min(100, (featuredTopic.joinedCount / featuredTopic.targetCount) * 100)}%` }}
-                  />
-                </div>
-              </button>
-
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[
-                  { title: '浏览 3 个共创', done: '3/3', reward: '+20', primary: true },
-                  { title: '回应一位好友', done: '0/1', reward: '+50' },
-                  { title: '参与待成圈话题', done: '0/2', reward: '+100' },
-                ].map((task, taskIndex) => (
-                  <div
-                    key={task.title}
-                    className={`rounded-[16px] border px-3 py-3 text-left shadow-sm ${
-                      task.primary ? 'border-[#ffbed0] bg-[#fff6f8]' : 'border-[#eadfce] bg-white'
-                    }`}
-                  >
-                    <p className="min-h-[32px] text-[11px] font-black leading-snug text-[#4a3a2a]">{task.title}</p>
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className={`text-[10px] font-black ${task.primary ? 'text-[#FE2C55]' : 'text-[#b4834a]'}`}>{task.done}</span>
-                      <span className="inline-flex items-center whitespace-nowrap rounded-full bg-[#fff1d8] px-2 py-0.5 text-[9px] font-black leading-none text-[#b4834a]">⚡ {task.reward}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        dismissGrowthPrompt();
-                        if (taskIndex === 1) {
-                          setScreen('messages');
-                        } else if (taskIndex === 2) {
-                          setScreen('circle');
-                        } else if (!task.primary) {
-                          setScreen('circle');
-                        }
-                      }}
-                      className={`mt-3 h-8 w-full rounded-full text-[10px] font-black active:scale-95 transition-transform ${
-                        task.primary ? 'bg-[#FE2C55] text-white' : 'bg-[#2f261d] text-white'
-                      }`}
-                    >
-                      {task.primary ? '领取' : '去完成'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
-};
+}
 
-const HeatingConfirmationModal = ({
-  isOpen,
-  onClose,
-  onConfirm
+function ChatScreen({
+  thread,
+  setScreen,
 }: {
-  isOpen: boolean,
-  onClose: () => void,
-  onConfirm: () => void
-}) => {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="absolute inset-0 z-[200] flex items-center justify-center p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
-          />
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-sm bg-[#1a1a1a] rounded-[24px] border border-white/10 overflow-hidden shadow-2xl"
-          >
-            <div className="p-8 text-center space-y-6">
-              <div className="w-20 h-20 bg-gold/10 rounded-full flex items-center justify-center mx-auto border border-gold/20">
-                <Flame size={40} className="text-gold fill-gold" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-white">加热共创话题</h3>
-                <p className="text-sm text-white/40 leading-relaxed">
-                  加热后，会有更多人能留意到该作品
-                </p>
-              </div>
+  thread: MessageThread;
+  setScreen: (screen: Screen) => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const [messages, setMessages] = useState([
+    { id: 1, sender: 'other', text: thread.lastMessage, time: thread.time },
+    { id: 2, sender: 'me', text: 'Thanks for the update.', time: '09:42' },
+  ]);
 
-              <div className="bg-white/5 rounded-xl p-4 text-left space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/40">消耗钻石</span>
-                  <span className="text-gold font-bold">100 💎</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/40">展示时效</span>
-                  <span className="text-white/80">话题成圈前有效</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className="flex-1 h-14 bg-white/5 text-white/60 rounded-xl font-bold text-sm active:scale-95 transition-transform"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => {
-                    onConfirm();
-                    onClose();
-                  }}
-                  className="flex-1 h-14 bg-gold text-dark rounded-xl font-black text-sm active:scale-95 transition-transform"
-                >
-                  确认加热
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const FriendSelectionModal = ({
-  isOpen,
-  onClose,
-  onInvite,
-  remainingCount
-}: {
-  isOpen: boolean,
-  onClose: () => void,
-  onInvite: (selectedNames: string[]) => void,
-  remainingCount: number
-}) => {
-  const [selectedFriends, setSelectedFriends] = useState<Set<string>>(new Set());
-
-  const FRIENDS = [
-    { name: '林野', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=128&h=128&fit=crop' },
-    { name: 'Mia', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop' },
-    { name: '苏苏', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&h=128&fit=crop' },
-  ];
-
-  const handleToggle = (name: string) => {
-    setSelectedFriends(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        if (next.size < remainingCount) {
-          next.add(name);
-        }
-      }
-      return next;
-    });
+  const send = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setMessages((prev) => [...prev, { id: Date.now(), sender: 'me', text, time: 'Now' }]);
+    setDraft('');
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[60]"
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute inset-x-0 bottom-0 h-[80vh] bg-[#121212] rounded-t-[40px] z-[61] flex flex-col overflow-hidden border-t border-white/10"
-          >
-            <div className="p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">选择好友</h3>
-                <p className="text-xs text-white/40 mt-1">还可以邀请 {remainingCount - selectedFriends.size} 位好友</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
-              {FRIENDS.map(friend => (
-                <button
-                  key={friend.name}
-                  onClick={() => handleToggle(friend.name)}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                    selectedFriends.has(friend.name)
-                    ? 'bg-gold/10 border-gold shadow-[0_0_20px_rgba(255,184,0,0.1)]'
-                    : 'bg-white/5 border-white/5'
-                  }`}
-                >
-                  <img src={friend.avatar} alt="" className="w-12 h-12 rounded-full border-2 border-black bg-white/10" />
-                  <span className="flex-1 text-left font-bold text-white">{friend.name}</span>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                    selectedFriends.has(friend.name)
-                    ? 'bg-gold border-gold'
-                    : 'border-white/20'
-                  }`}>
-                    {selectedFriends.has(friend.name) && <Check size={14} className="text-dark" />}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="p-6 bg-dark/80 backdrop-blur-xl border-t border-white/5">
-              <button
-                disabled={selectedFriends.size === 0}
-                onClick={() => {
-                  onInvite(Array.from(selectedFriends));
-                  onClose();
-                }}
-                className={`w-full h-14 rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                  selectedFriends.size > 0
-                  ? 'bg-gold text-dark'
-                  : 'bg-white/10 text-white/20'
-                }`}
-              >
-                发送邀请 {selectedFriends.size > 0 && `(${selectedFriends.size})`}
-              </button>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
-
-type Visibility = 'public' | 'friends' | 'private' | 'selected';
-
-const VisibilitySelectorDrawer = ({
-  isOpen,
-  onClose,
-  visibility,
-  setVisibility,
-  selectedFriendIds,
-  setSelectedFriendIds
-}: {
-  isOpen: boolean,
-  onClose: () => void,
-  visibility: Visibility,
-  setVisibility: (v: Visibility) => void,
-  selectedFriendIds: Set<string>,
-  setSelectedFriendIds: (ids: Set<string>) => void
-}) => {
-  const friends = [
-    { id: '1', name: '林野', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=128&h=128&fit=crop' },
-    { id: '2', name: 'Mia', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop' },
-    { id: '5', name: '苏苏', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&h=128&fit=crop' },
-  ];
-
-  const toggleFriend = (id: string) => {
-    const next = new Set(selectedFriendIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedFriendIds(next);
-  };
-
-  const options: { id: Visibility, label: string, desc: string, icon: any }[] = [
-    { id: 'public', label: '公开', desc: '所有人可见', icon: <Globe size={18} /> },
-    { id: 'friends', label: '朋友', desc: '互关朋友可见', icon: <Users2 size={18} /> },
-    { id: 'private', label: '私密', desc: '仅自己可见', icon: <Lock size={18} /> },
-    { id: 'selected', label: '部分可见', desc: '选中的朋友可见', icon: <UserIcon size={18} /> }
-  ];
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[110]"
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute inset-x-0 bottom-0 bg-[#0A0A0A] rounded-t-[40px] max-h-[85vh] overflow-hidden flex flex-col z-[120] shadow-[0_-20px_50px_rgba(0,0,0,0.5)] border-t border-white/5"
-          >
-            <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mt-3 mb-1 flex-shrink-0" />
-            <header className="p-6 pt-2 flex items-center justify-between border-b border-white/[0.03]">
-              <button onClick={onClose} className="text-white/40 font-bold text-xs uppercase tracking-widest px-2">取消</button>
-              <h3 className="font-black text-white text-sm tracking-[0.3em] uppercase">谁可以看</h3>
-              <button
-                onClick={onClose}
-                className="px-6 py-2 bg-gold text-dark rounded-full text-xs font-black shadow-lg shadow-gold/20 active:scale-95 transition-transform"
-              >
-                确定
-              </button>
-            </header>
-
-            <div className="flex-1 overflow-y-auto no-scrollbar py-4 px-6 space-y-6 pb-20">
-              <div className="space-y-2">
-                {options.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setVisibility(item.id)}
-                    className={`p-5 rounded-2xl border transition-all flex items-center justify-between ${visibility === item.id ? 'bg-white/10 border-white/20' : 'bg-white/5 border-white/5'}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${visibility === item.id ? 'bg-gold text-dark border-gold' : 'bg-white/5 text-white/30 border-white/5'}`}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-white">{item.label}</p>
-                        <p className="text-[10px] text-white/30 uppercase tracking-tighter mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${visibility === item.id ? 'border-gold bg-gold' : 'border-white/10'}`}>
-                      {visibility === item.id && <Check size={12} className="text-dark" strokeWidth={4} />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <AnimatePresence>
-                {visibility === 'selected' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 pt-4 border-t border-white/5 overflow-hidden"
-                  >
-                    <label className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] ml-1">选择好友</label>
-                    <div className="space-y-2">
-                      {friends.map(friend => (
-                        <div
-                          key={friend.id}
-                          onClick={() => toggleFriend(friend.id)}
-                          className={`flex items-center justify-between p-4 rounded-xl border transition-all ${selectedFriendIds.has(friend.id) ? 'bg-white/10 border-white/10' : 'bg-white/5 border-white/5'}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <img src={friend.avatar} alt="" className="w-10 h-10 rounded-full object-cover border border-white/10" />
-                            <span className="font-bold text-white text-sm">{friend.name}</span>
-                          </div>
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedFriendIds.has(friend.id) ? 'bg-gold border-gold' : 'border-white/10'}`}>
-                            {selectedFriendIds.has(friend.id) && <Check size={14} className="text-dark" strokeWidth={3} />}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const GiftDonorStack = ({ gifts, onClick }: { gifts: GiftRecord[], onClick: () => void }) => {
-  const topGifts = gifts.slice(0, 3);
-  const remaining = gifts.length > 3 ? gifts.length - 3 : 0;
-
-  return (
-    <button onClick={onClick} className="pointer-events-auto flex -space-x-2 items-center hover:scale-105 transition-transform bg-black/20 p-1 rounded-full border border-white/10 backdrop-blur-md">
-      {topGifts.map((g, i) => (
-        <img key={g.id} src={g.avatar} className="w-8 h-8 rounded-full border-2 border-dark" alt={g.userName} />
-      ))}
-      {remaining > 0 && (
-         <div className="w-8 h-8 rounded-full bg-dark/80 text-white text-[10px] flex items-center justify-center font-bold border-2 border-dark">
-           +{remaining}
-         </div>
-      )}
-    </button>
-  );
-};
-
-const GiftDonorDetailModal = ({
-  isOpen,
-  onClose,
-  gifts
-}: {
-  isOpen: boolean,
-  onClose: () => void,
-  gifts: GiftRecord[]
-}) => {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="absolute inset-0 z-[200] flex items-center justify-center p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
-          />
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-sm bg-[#1a1a1a] rounded-[24px] border border-white/10 overflow-hidden shadow-2xl"
-          >
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-white mb-4">赠礼用户详情</h3>
-                <div className="space-y-4 max-h-60 overflow-y-auto no-scrollbar">
-                  {gifts.map(g => (
-                    <div key={g.id} className="flex items-center gap-3">
-                      <img src={g.avatar} className="w-10 h-10 rounded-full" alt={g.userName} />
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-white">{g.userName}</p>
-                        <p className="text-xs text-white/50">{g.giftName}</p>
-                      </div>
-                      <span className="text-sm font-black text-gold">{g.giftValue}</span>
-                    </div>
-                  ))}
-                </div>
-              <button
-                onClick={onClose}
-                className="w-full mt-6 h-12 bg-white/5 text-white/60 rounded-xl font-bold text-sm active:scale-95 transition-transform"
-              >
-                关闭
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const TopicDetail = ({ topic, setScreen, prevScreen, toggleFavorite, isFavorite, toggleLike, isLiked, setSelectedTopic, setSelectedUserName, showToast, isSpotlighted, spotlightTopic, userVlogs, deleteVlog, setCircleInitialTopicInfo, setReportTargetName, setReportType }: {
-  topic: Topic,
-  setScreen: (s: Screen) => void,
-  prevScreen: Screen,
-  toggleFavorite: (id: string) => void,
-  isFavorite: boolean,
-  toggleLike: (id: string) => void,
-  isLiked: boolean,
-  setSelectedTopic: (topic: Topic) => void,
-  setSelectedUserName: (name: string) => void,
-  showToast: (m: string) => void,
-  isSpotlighted: boolean,
-  spotlightTopic: (id: string) => void,
-  userVlogs: UserVlog[],
-  deleteVlog: (id: string) => void,
-  setCircleInitialTopicInfo: (info: Partial<Topic> | undefined) => void,
-  setReportTargetName: (name: string) => void,
-  setReportType: (type: 'account' | 'video') => void
-}) => {
-  const [isCreatorsExpanded, setIsCreatorsExpanded] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [isHeatingModalOpen, setIsHeatingModalOpen] = useState(false);
-  const [isGiftDonorModalOpen, setIsGiftDonorModalOpen] = useState(false);
-  const [isGiftDonorDetailModalOpen, setIsGiftDonorDetailModalOpen] = useState(false);
-  const [isVisibilityDrawerOpenForClips, setIsVisibilityDrawerOpenForClips] = useState(false);
-  const [editingClipId, setEditingClipId] = useState<string | null>(null);
-  const [clipVisibility, setClipVisibility] = useState<Visibility>('public');
-  const [selectedFriendIds, setSelectedFriendIds] = useState<Set<string>>(new Set());
-  const [selectedShareUserIds, setSelectedShareUserIds] = useState<Set<string>>(new Set());
-  const [isDeletingClip, setIsDeletingClip] = useState(false);
-  const [clipToDelete, setClipToDelete] = useState<string | null>(null);
-  const [isShareDrawerOpen, setIsShareDrawerOpen] = useState(false);
-
-  const remainingCount = topic.targetCount - topic.joinedCount;
-  const progressPercent = Math.min(100, (topic.joinedCount / topic.targetCount) * 100);
-  const userTopicClips = userVlogs.filter(v => v.topicId === topic.id);
-  const visibleCreatorSlots = isCreatorsExpanded ? topic.targetCount : Math.min(topic.targetCount, 8);
-  const topicGifts = MOCK_GIFT_RECORDS.filter(g => g.topicId === topic.id);
-
-  const toggleShareUser = (id: string) => {
-    const next = new Set(selectedShareUserIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedShareUserIds(next);
-  };
-
-  const shareDrawer = (
-    <AnimatePresence>
-      {isShareDrawerOpen && (
-        <motion.div
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           exit={{ opacity: 0 }}
-           onClick={(e) => { e.stopPropagation(); setIsShareDrawerOpen(false); }}
-           className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col justify-end"
-        >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[#111111] rounded-t-[32px] pt-6 pb-12 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/5"
-          >
-              <div className="flex justify-between items-center px-6 mb-4">
-                <h3 className="text-white text-sm font-black tracking-[0.2em] uppercase">分享给好友</h3>
-                <button
-                  onClick={() => setIsShareDrawerOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-white/40 active:scale-95 transition-transform"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Multi-select Friends List */}
-              <div className="flex gap-4 overflow-x-auto no-scrollbar px-6 pb-2">
-                {sortedShareFriends.map((friend) => {
-                  const cpStyle = getCpStyle(friend.cpType);
-                  const isSelected = selectedShareUserIds.has(friend.id);
-                  return (
-                    <button
-                      key={friend.id}
-                      className="flex min-w-[64px] flex-col items-center gap-2 group relative"
-                      onClick={() => toggleShareUser(friend.id)}
-                    >
-                      <div className={`relative h-14 w-14 overflow-hidden rounded-full border-2 p-0.5 active:scale-95 transition-all ${
-                        isSelected ? 'border-red-primary bg-red-primary/10' : friend.cpType ? cpStyle.ring : 'border-white/5 bg-white/5'
-                      }`}>
-                        <img src={friend.avatar} alt={friend.name} className="h-full w-full rounded-full object-cover" />
-                        {friend.cpType && (
-                          <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[7px] font-black leading-none ${cpStyle.badge}`}>
-                            {friend.cpType}
-                          </span>
-                        )}
-                      </div>
-                      <div className={`absolute top-0 right-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                          ? 'bg-red-primary border-red-primary opacity-100 scale-100'
-                          : 'bg-black/20 border-white/20 opacity-40 scale-75'
-                      }`}>
-                        {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
-                      </div>
-                      <span className={`text-[10px] font-black tracking-tight transition-colors ${
-                        isSelected ? 'text-white' : friend.cpType ? cpStyle.text : 'text-white/40'
-                      }`}>
-                        {friend.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Action Bar / Send Button */}
-              <AnimatePresence>
-                {selectedShareUserIds.size > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="px-6 py-2"
-                  >
-                    <button
-                      onClick={() => {
-                        showToast(`已向 ${selectedShareUserIds.size} 位好友发送邀请`);
-                        setIsShareDrawerOpen(false);
-                      }}
-                      className="w-full h-14 bg-red-primary text-white rounded-xl font-black uppercase text-xs shadow-[0_10px_30px_rgba(255,36,66,0.3)] active:scale-95 transition-transform"
-                    >
-                      发送给 {selectedShareUserIds.size} 位好友
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="h-px bg-white/5 w-full mx-auto max-w-[80%] my-2" />
-
-	              {/* Other Sharing Channels */}
-	              <div className="flex gap-6 overflow-x-auto no-scrollbar px-6 pb-2">
-	                {[
-	                  { key: 'drawer1-report', icon: AlertTriangle, label: '举报话题', action: () => { setReportType('video'); setReportTargetName(topic.title); setIsShareDrawerOpen(false); setScreen('report-user'); } },
-	                ].map((item) => (
-                  <button key={item.key} className="flex flex-col items-center gap-2 group shrink-0" onClick={item.action}>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center active:scale-95 transition-transform bg-white/5 border border-white/10 text-white/60">
-	                      <item.icon size={20} />
-                    </div>
-                    <span className="text-[9px] font-black text-white/40 group-active:text-white uppercase tracking-tighter text-center max-w-[58px] leading-tight">
-                      {item.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  if (topic.status !== 'completed') {
-    return (
-      <div className="flex h-full flex-col overflow-hidden bg-[#f7f3ec] pt-8 text-[#2f261d]">
-        <main className="flex-1 overflow-y-auto no-scrollbar px-4 py-5">
-          <div className="flex min-h-full flex-col justify-center">
-          <motion.div
-            layoutId={`topic-card-${topic.id}`}
-            className="relative z-10 overflow-hidden rounded-[24px] border border-[#eadfce] bg-white shadow-[0_20px_44px_rgba(103,81,58,0.14)]"
-          >
-            <div className="relative h-[360px] overflow-hidden bg-black">
-              <img src={topic.image || dailyLifeFrames[0]} alt="" className="h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/8 to-black/12" />
-              <button
-                onClick={() => setScreen(prevScreen || 'home')}
-                className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/24 bg-black/22 text-white backdrop-blur-md active:scale-95 transition-transform"
-                aria-label="关闭详情"
-              >
-                <X size={20} />
-              </button>
-              <div className="absolute right-4 top-4 flex gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(topic.id);
-                  }}
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border backdrop-blur-md active:scale-95 transition-all ${
-                    isFavorite ? 'border-[#d6b27e] bg-[#d6b27e] text-white' : 'border-white/24 bg-black/22 text-white'
-                  }`}
-                  aria-label={isFavorite ? '取消收藏' : '收藏'}
-                >
-                  <Star size={18} className={isFavorite ? 'fill-current' : ''} />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setIsShareDrawerOpen(true); }}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/24 bg-black/22 text-white backdrop-blur-md active:scale-95"
-                  aria-label="分享话题"
-                >
-                  <CornerUpRight size={18} />
-                </button>
-              </div>
-              <div className="absolute bottom-6 left-5 right-5 text-white">
-                <h1 className="text-[34px] font-black leading-[0.98] drop-shadow-[0_3px_12px_rgba(0,0,0,0.58)]">{topic.title}</h1>
-              </div>
-            </div>
-
-            <HeatingConfirmationModal
-              isOpen={isHeatingModalOpen}
-              onClose={() => setIsHeatingModalOpen(false)}
-              onConfirm={() => spotlightTopic(topic.id)}
-            />
-
-            <GiftDonorDetailModal
-              isOpen={isGiftDonorDetailModalOpen}
-              onClose={() => setIsGiftDonorDetailModalOpen(false)}
-              gifts={topicGifts}
-            />
-
-            <div className="space-y-4 px-5 py-5">
-              <p className="text-[14px] font-bold leading-relaxed text-[#5f5145]">
-                {topic.description}
-              </p>
-
-              <div className="space-y-4">
-                 <div>
-                   <div className="flex items-center justify-between mb-3">
-                     <h4 className="text-[10px] font-black text-[#9b8a79]">共创进度</h4>
-                     <span className="text-[11px] font-black text-[#b4834a]">{topic.joinedCount}/{topic.targetCount}</span>
-                   </div>
-                   <div className="h-2 w-full bg-[#eadfce] rounded-full overflow-hidden mb-3">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progressPercent}%` }}
-                        className="h-full bg-[#FE2C55] rounded-full"
-                      />
-                   </div>
-                   <div className="flex justify-between items-center">
-                     <p className="text-[11px] font-bold text-[#8f7f6d]">
-                       还差 <span className="text-[#2f261d]">{topic.targetCount - topic.joinedCount}</span> 位共创者即可成圈
-                     </p>
-                   </div>
-                 </div>
-
-                 <div className="flex items-center justify-between gap-3 pb-2">
-                   <div className="flex -space-x-2 min-w-0">
-                     {Array.from({ length: Math.min(topic.joinedCount, 8) }).map((_, i) => (
-                       <button
-                         key={i}
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           setSelectedUserName(`共创者 ${i + 1}`);
-                           setScreen('user-profile');
-                         }}
-                         className="w-9 h-9 rounded-full border-2 border-white bg-[#f6ede3] overflow-hidden active:scale-90 transition-transform relative z-10"
-                       >
-                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.id + i}`} alt="" className="w-full h-full object-cover" />
-                       </button>
-                     ))}
-                   </div>
-                   <button
-                     onClick={() => setIsCreatorsExpanded(true)}
-                     className="shrink-0 h-10 px-4 rounded-full bg-[#f7f3ec] border border-[#eadfce] text-[10px] font-black text-[#8f7f6d] active:scale-95 transition-transform"
-                   >
-                     查看共创人
-                   </button>
-                 </div>
-
-                 <div>
-                   {userTopicClips.length === 0 ? (
-                     <button
-                       onClick={() => {
-                          setScreen('join');
-                       }}
-                       className="w-full h-14 bg-[#FE2C55] text-white rounded-full shadow-[0_12px_26px_rgba(254,44,85,0.22)] active:scale-95 transition-all flex items-center justify-center gap-2.5"
-                     >
-                       <ImageIcon size={18} />
-                       <div className="flex flex-col items-start leading-tight">
-                         <span className="text-sm font-black">参与共创</span>
-                         <span className="text-[10px] text-white/80">拍下此刻</span>
-                       </div>
-                     </button>
-                   ) : (
-                     <button
-                       onClick={() => setIsInviteModalOpen(true)}
-                       className="w-full h-14 bg-[#f7f3ec] border border-[#eadfce] text-[#2f261d] rounded-full font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2.5"
-                     >
-                       <UserPlus size={18} />
-                       <span className="text-sm">邀请好友加入</span>
-                     </button>
-                   )}
-                 </div>
-              </div>
-
-              {userTopicClips.length > 0 && (
-                <div className="flex flex-col items-center gap-1 pt-4 opacity-50">
-                  <p className="text-[9px] font-black text-[#9b8a79] tracking-[0.2em] uppercase">下滑查看拍摄记录</p>
-                  <ChevronDown size={12} className="text-[#9b8a79] animate-bounce" />
-                </div>
-              )}
-            </div>
-	          </motion.div>
-          </div>
-
-	          <AnimatePresence>
-            {userTopicClips.length > 0 && (
-              <motion.div
-                key="user-clips"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-8 space-y-4"
-              >
-                <div className="flex items-center justify-between px-2">
-                  <h3 className="text-xs font-black text-[#9b8a79] uppercase tracking-widest">我的拍摄记录</h3>
-                  <span className="text-[10px] text-[#b4834a] font-bold">{userTopicClips.length} 个片段</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {userTopicClips.map((clip) => (
-                    <div key={clip.id} className="aspect-[4/3] rounded-[18px] bg-white border border-[#eadfce] relative overflow-hidden group">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Camera size={24} className="text-[#d8cdbc]" />
-                      </div>
-                      <div className="absolute top-2 right-2 flex gap-1 z-20">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingClipId(clip.id);
-                            setIsVisibilityDrawerOpenForClips(true);
-                          }}
-                          className="w-7 h-7 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-[#8f7f6d] border border-[#eadfce] transition-all active:scale-95"
-                        >
-                          <Lock size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setClipToDelete(clip.id);
-                            setIsDeletingClip(true);
-                          }}
-                          className="w-7 h-7 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-rose-500 border border-[#eadfce] transition-all active:scale-95"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                      <div className="absolute bottom-3 left-3 right-3 text-center">
-                        <p className="text-[9px] font-bold text-[#8f7f6d] truncate tracking-wide">已录制 · 待解锁</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            <AnimatePresence>
-              {isDeletingClip && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
-                  onClick={() => setIsDeletingClip(false)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-sm bg-[#121212] rounded-[24px] p-8 border border-white/10 shadow-2xl space-y-6"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto">
-                      <Trash2 size={32} />
-                    </div>
-                    <div className="text-center space-y-2">
-                      <h3 className="text-lg font-bold text-white">您确定要删除该作品吗？</h3>
-                      <p className="text-xs text-white/40 leading-relaxed">删除后将无法恢复，且您在该话题中的贡献片段将被移除。</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        onClick={() => setIsDeletingClip(false)}
-                        className="h-12 rounded-xl bg-white/5 text-white/60 font-bold active:scale-95 transition-transform"
-                      >
-                        取消
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (clipToDelete) {
-                            deleteVlog(clipToDelete);
-                            showToast('片段已删除');
-                          }
-                          setIsDeletingClip(false);
-                        }}
-                        className="h-12 rounded-xl bg-rose-500 text-white font-bold shadow-lg shadow-rose-500/20 active:scale-95 transition-transform"
-                      >
-                        确认删除
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {isCreatorsExpanded && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsCreatorsExpanded(false)}
-                  className="absolute inset-0 bg-[#2f261d]/35 backdrop-blur-sm z-[50]"
-                />
-                <motion.div
-                  key="creators-expanded"
-                  initial={{ y: '100%' }}
-                  animate={{ y: 0 }}
-                  exit={{ y: '100%' }}
-                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                  className="absolute inset-x-0 bottom-0 h-[85vh] bg-[#f7f3ec] rounded-t-[40px] z-[51] flex flex-col overflow-hidden border-t border-[#eadfce]"
-                >
-                  <div className="p-6 flex items-center justify-between border-b border-[#eadfce]">
-                    <div>
-                      <h3 className="text-xl font-bold text-[#2f261d] tracking-wide">全部共创者</h3>
-                      <p className="text-[10px] text-[#9b8a79] mt-1 uppercase tracking-widest">还差 {remainingCount} 个共创人成圈</p>
-                    </div>
-                    <button
-                      onClick={() => setIsCreatorsExpanded(false)}
-                      className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#8f7f6d] border border-[#eadfce]"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                    {Array.from({ length: topic.joinedCount }).map((_, i) => (
-                      <div
-                        key={`joined-${topic.id}-${i}`}
-                        onClick={() => {
-                          setSelectedUserName(`共创者 ${i + 1}`);
-                          setScreen('user-profile');
-                        }}
-                        className="flex items-center gap-4 bg-white border border-[#eadfce] p-4 rounded-2xl active:scale-[0.98] transition-transform cursor-pointer"
-                      >
-                        <img
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.id + i}`}
-                          alt=""
-                          className="w-12 h-12 rounded-full border-2 border-white bg-[#f6ede3]"
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-bold text-[#2f261d]">共创者 {i + 1}</h4>
-                          <p className="text-[10px] text-[#9b8a79] uppercase tracking-tighter">已上传共创片段</p>
-                        </div>
-                        <ChevronRight size={16} className="text-[#c0b09d]" />
-                      </div>
-                    ))}
-
-                    {Array.from({ length: remainingCount }).map((_, i) => (
-                      <div
-                        key={`empty-${i}`}
-                        className="flex items-center gap-4 bg-white/50 border border-dashed border-[#d8cdbc] p-4 rounded-2xl"
-                      >
-                        <div className="w-12 h-12 rounded-full border-2 border-dashed border-[#d8cdbc] flex items-center justify-center">
-                          <UserIcon size={20} className="text-[#c0b09d]" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-[#9b8a79] italic">虚位以待</h4>
-                          <p className="text-[10px] text-[#c0b09d] uppercase tracking-tighter">等待共创者加入</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="p-6 bg-white/80 backdrop-blur-xl border-t border-[#eadfce]">
-                    <button
-                      onClick={() => setIsInviteModalOpen(true)}
-                      className="w-full h-14 bg-[#2f261d] text-white font-black rounded-xl shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2"
-                    >
-                      <UserPlus size={18} />
-                      邀请好友
-                    </button>
-                    <div className="mt-4 text-center">
-                      <p className="text-[10px] text-[#9b8a79] font-medium">邀请好友加入，成圈后解锁集体记忆</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <FriendSelectionModal
-                  isOpen={isInviteModalOpen}
-                  onClose={() => setIsInviteModalOpen(false)}
-                  remainingCount={remainingCount}
-                  onInvite={(friends) => {
-                    showToast(`已向 ${friends.length} 位好友发送邀请`);
-                    setIsInviteModalOpen(false);
-                  }}
-                />
-              </>
-            )}
-            <VisibilitySelectorDrawer
-              isOpen={isVisibilityDrawerOpenForClips}
-              onClose={() => setIsVisibilityDrawerOpenForClips(false)}
-              visibility={clipVisibility}
-              setVisibility={setClipVisibility}
-              selectedFriendIds={selectedFriendIds}
-              setSelectedFriendIds={setSelectedFriendIds}
-            />
-          </AnimatePresence>
-        </main>
-        {shareDrawer}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-full bg-dark pt-8">
-      <header className="p-6 flex items-center justify-between sticky top-0 bg-dark/80 backdrop-blur-xl z-20 border-b border-white/[0.03]">
-        <button onClick={() => setScreen(prevScreen || 'home')} className="w-10 h-10 glass-pill rounded-xl flex items-center justify-center">
-          <X size={14} className="text-white" />
+    <div className="flex h-full flex-col bg-[#f7f7f7] pt-8 text-[#161616]">
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-[#f7f7f7]/96 px-5 py-4 backdrop-blur-xl">
+        <button onClick={() => setScreen('messages')} className={iconButton} aria-label="Back">
+          <ArrowLeft size={20} />
         </button>
-          <div className="flex-1 flex items-center justify-between px-4">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-3">
-                <h2 className="font-bold tracking-tight text-white">话题详情</h2>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-              <span className={`px-2 py-0.5 rounded-full text-[8px] font-black tracking-widest uppercase ${
-                topic.status === 'completed' ? 'bg-green-500/10 text-green-400' : 'bg-gold/10 text-gold'
-              }`}>
-                {topic.status === 'completed' ? `${topic.joinedCount}人共创` : '待成圈'}
+        <h1 className="text-base font-black">{thread.name}</h1>
+        <button className={iconButton} aria-label="More">
+          <MoreHorizontal size={20} />
+        </button>
+      </header>
+
+      <main className="flex-1 space-y-4 overflow-y-auto px-4 py-4 no-scrollbar">
+        {messages.map((message) => (
+          <div key={message.id} className={`flex gap-2.5 ${message.sender === 'me' ? 'flex-row-reverse' : ''}`}>
+            <img
+              src={message.sender === 'me' ? CURRENT_USER.avatar : thread.avatar}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-full bg-white object-cover"
+            />
+            <div
+              className={`max-w-[72%] rounded-[16px] px-3.5 py-2.5 text-sm font-medium shadow-sm ${
+                message.sender === 'me' ? 'rounded-tr-[4px] bg-[#241f1b] text-white' : 'rounded-tl-[4px] bg-white text-[#161616]'
+              }`}
+            >
+              <p>{message.text}</p>
+              <span className={`mt-1 block text-right text-[9px] font-bold ${message.sender === 'me' ? 'text-white/55' : 'text-[#a1a1a1]'}`}>
+                {message.time}
               </span>
             </div>
           </div>
-        </div>
-        {topic.status === 'completed' ? (
-          <button onClick={() => setIsShareDrawerOpen(true)} className="w-10 h-10 glass-pill rounded-xl flex items-center justify-center">
-            <CornerUpRight size={20} className="text-white" />
-          </button>
-        ) : (
-          <button
-            onClick={(e) => {
-                e.stopPropagation();
-                setIsHeatingModalOpen(true);
-            }}
-            className={`h-10 px-4 rounded-xl flex items-center gap-1.5 transition-all text-xs font-black uppercase border shadow-lg ${
-              isSpotlighted ? 'bg-gold text-dark border-gold' : 'glass-pill text-gold border-gold/30 hover:bg-gold/10 active:scale-95'
-            }`}
-          >
-            <Flame size={14} className={isSpotlighted ? 'fill-current' : 'fill-none'} />
-          </button>
-        )}
-        <HeatingConfirmationModal
-          isOpen={isHeatingModalOpen}
-          onClose={() => setIsHeatingModalOpen(false)}
-          onConfirm={() => spotlightTopic(topic.id)}
-        />
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar">
-        <div className={`p-4 pb-4 bg-gradient-to-b ${
-          topic.tone === 'blue' ? 'from-indigo-500/20' :
-          topic.tone === 'amber' ? 'from-amber-500/20' : 'from-emerald-500/20'
-        } to-dark space-y-2 relative`}>
-          <div className="absolute inset-0 opacity-10 pointer-events-none"
-               style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 100%)' }}></div>
-
-          <div className="flex items-center justify-between z-10 relative">
-             <div className="flex flex-col gap-0.5">
-               <div className="flex items-center gap-3">
-                 <h1 className="text-xl font-bold leading-tight text-white">{topic.title}</h1>
-               </div>
-               <div className="flex items-center gap-2">
-                 <p className="text-white/40 text-[10px] line-clamp-1">{topic.description}</p>
-               </div>
-             </div>
-          </div>
-        </div>
-
-        <section className="px-6 space-y-8 -mt-2 pb-32">
-          {topic.status === 'completed' && (
-            <div className="space-y-6 pt-2">
-              <div className="relative group cursor-pointer overflow-hidden rounded-[28px] border border-white/5 bg-black shadow-2xl" onClick={() => showToast('即将开始播放完整共创作品...')}>
-                <div className="grid grid-cols-2 gap-0.5">
-                  {Array.from({ length: Math.min(topic.targetCount, 4) }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="aspect-[3/4] bg-dark relative overflow-hidden group/item"
-                    >
-                      <img src={dailyLifeFrames[i]} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/10" />
-                      <div className="absolute top-3 left-3 px-2 py-1 bg-black/40 backdrop-blur-sm rounded-lg border border-white/5">
-                        <p className="text-[9px] font-black text-white/50 tracking-tighter uppercase">Scene {i+1}</p>
-                      </div>
-
-                      <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=User${topic.id + i}`} alt="" className="w-5 h-5 rounded-full border border-white/20 shadow-sm" />
-                        <span className="text-[9px] font-bold text-white/60 tracking-wider">@{i % 2 === 0 ? 'Soul' : 'Echo'}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {topic.targetCount > 4 && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                       <span className="bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 text-[11px] font-black text-white/90 tracking-widest uppercase shadow-xl">
-                         +{topic.targetCount - 4} MORE
-                       </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Large Central Play Button */}
-                <div className="absolute inset-0 flex items-center justify-center z-10">
-                  <div className="w-16 h-16 rounded-full bg-gold/90 backdrop-blur-md flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.4)] border border-white/20 transform group-active:scale-95 transition-all">
-                    <Zap size={28} className="text-dark fill-dark ml-0.5" />
-                  </div>
-                </div>
-
-                <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                   <p className="text-[9px] font-black text-gold tracking-widest uppercase">{topic.targetCount}位共创人集结</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-white/[0.03] p-5 rounded-[24px] border border-white/5 backdrop-blur-xl">
-                 <div className="flex flex-col gap-2">
-                   <div className="flex items-center gap-2 bg-white/5 w-fit px-3 py-1.5 rounded-lg border border-white/5">
-                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                     <p className="text-[11px] font-black text-white tracking-[0.1em] uppercase">作品已就绪</p>
-                   </div>
-                 </div>
-                 <button
-                  onClick={() => setScreen('gift')}
-                  className="flex items-center gap-2 bg-white text-dark px-5 py-3 rounded-[16px] font-black text-[11px] uppercase shadow-xl active:scale-95 transition-all hover:bg-gold hover:text-dark"
-                >
-                  <Gift size={14} />
-                  赏爆它
-                </button>
-              </div>
-            </div>
-          )}
-
-          {topic.status === 'completed' && (
-            <div className="flex items-center p-4 bg-card bento-card border border-white/5 shadow-2xl relative overflow-hidden">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
-                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.creator}`} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="ml-4 flex-1">
-                <p className="text-sm font-bold leading-none text-white">DR官方</p>
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mt-1.5">官方发起话题 · {topic.city}</p>
-              </div>
-              <ChevronRight size={16} className="text-white/10" />
-            </div>
-          )}
-
-          {topic.status !== 'completed' ? (
-            <div className="space-y-4">
-              <div className={`relative overflow-hidden rounded-[32px] border border-white/15 px-6 pt-6 pb-5 shadow-2xl min-h-[520px] flex flex-col justify-between bg-gradient-to-br ${
-                topic.tone === 'blue' ? 'from-indigo-600 via-indigo-950' :
-                topic.tone === 'amber' ? 'from-amber-600 via-amber-950' : 'from-emerald-600 via-emerald-950'
-              } to-black`}>
-                {topic.image && (
-                  <img src={topic.image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-55 blur-xl scale-110" />
-                )}
-                <div className="absolute inset-0 bg-black/35 pointer-events-none" />
-                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/25 to-transparent pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
-
-                <div className="relative z-10 flex items-start justify-between gap-3">
-                  <div className="flex flex-wrap gap-2 min-w-0">
-                    <span className="rounded-full bg-white/12 border border-white/10 px-3 py-1.5 text-[10px] font-black text-white/80 tracking-widest">
-                      {topic.city}
-                    </span>
-                    <span className="rounded-full bg-gold/15 border border-gold/20 px-3 py-1.5 text-[10px] font-black text-gold tracking-widest">
-                      待成圈
-                    </span>
-                  </div>
-                  <div className="shrink-0 rounded-xl bg-black/25 border border-white/10 px-3 py-2 text-right backdrop-blur-md">
-                    <p className="text-[8px] font-black text-white/35 tracking-widest">剩余</p>
-                    <p className="text-sm font-black text-red-primary mt-0.5">{topic.deadline}</p>
-                  </div>
-                </div>
-
-                <div className="relative z-10 space-y-5">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 w-fit rounded-full bg-white/10 border border-white/10 py-1.5 pl-1.5 pr-3 backdrop-blur-md">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.creator}`} alt="" className="w-7 h-7 rounded-full bg-white/10" />
-                      <span className="text-[10px] font-black text-white/70 tracking-widest">DR官方话题</span>
-                    </div>
-
-                    <div>
-                      <p className="text-[10px] font-black text-white/45 tracking-widest uppercase mb-2">{topic.mode} · {topic.durationLimit || 15}s</p>
-                      <h3 className="text-4xl font-black leading-[0.95] text-white tracking-tight">{topic.title}</h3>
-                      <p className="text-sm text-white/70 leading-relaxed mt-4">{topic.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="rounded-[20px] bg-white/10 border border-white/10 p-4 backdrop-blur-md">
-                      <div className="flex items-end justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-black text-white/45 tracking-widest uppercase">还差 {remainingCount} 人解锁</p>
-                          <div className="mt-2 h-2 rounded-full bg-white/15 overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${progressPercent}%` }}
-                              className="h-full rounded-full bg-gold"
-                            />
-                          </div>
-                        </div>
-                        <div className="shrink-0 flex items-baseline gap-1">
-                          <span className="text-4xl font-black text-white leading-none">{topic.joinedCount}</span>
-                          <span className="text-lg font-black text-white/35">/{topic.targetCount}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex -space-x-2 min-w-0">
-                        {Array.from({ length: Math.min(topic.joinedCount, 5) }).map((_, i) => (
-                          <button
-                            key={`creator1-${topic.id}-${i}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedUserName(`共创者 ${i + 1}`);
-                              setScreen('user-profile');
-                            }}
-                            className="w-9 h-9 rounded-full border-2 border-black bg-white/10 overflow-hidden active:scale-90 transition-transform"
-                          >
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.id + i}`} alt="" className="w-full h-full object-cover" />
-                          </button>
-                        ))}
-                        {Array.from({ length: Math.min(remainingCount, 3) }).map((_, i) => (
-                          <div key={`empty-${i}`} className="w-9 h-9 rounded-full border-2 border-black bg-white/10 flex items-center justify-center">
-                            <Plus size={13} className="text-white/35" />
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => setIsCreatorsExpanded(prev => !prev)}
-                        className="shrink-0 h-10 px-4 rounded-full bg-white/10 border border-white/10 text-[10px] font-black text-white/60 active:scale-95 transition-transform"
-                      >
-                        {isCreatorsExpanded ? '收起共创人' : '查看共创人'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {isCreatorsExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="rounded-[20px] bg-card border border-white/5 p-4 space-y-4 shadow-xl"
-                  >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-black text-white tracking-wide">全部共创人</h3>
-                    <p className="text-[10px] text-white/30 mt-1">满员后同步解锁所有人的素材。</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-3">
-                  {Array.from({ length: visibleCreatorSlots }).map((_, i) => (
-                    i < topic.joinedCount ? (
-                      <button
-                        key={i}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedUserName(`共创者 ${i + 1}`);
-                          setScreen('user-profile');
-                        }}
-                        className="aspect-square rounded-[16px] bg-white/5 border border-white/10 overflow-hidden active:scale-90 transition-transform relative shadow-lg"
-                      >
-                        <img src={dailyLifeFrames[i % dailyLifeFrames.length]} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.id + i}`} alt="" className="absolute left-1.5 top-1.5 h-6 w-6 rounded-full border border-white/40 bg-white/80 object-cover" />
-                        <span className="absolute bottom-1 left-1 right-1 rounded-full bg-black/45 py-0.5 text-[7px] font-black text-white/75 backdrop-blur-sm">已加入</span>
-                      </button>
-                    ) : (
-                      <button
-                        key={i}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsInviteModalOpen(true);
-                        }}
-                        className="aspect-square rounded-[16px] border border-white/10 bg-white/[0.025] overflow-hidden active:scale-90 transition-transform relative shadow-lg"
-                      >
-                        <img src={dailyLifeFrames[i % dailyLifeFrames.length]} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80" />
-                        <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px]" />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-white">
-                          <Plus size={17} strokeWidth={3} />
-                          <span className="text-[8px] font-black">邀请好友</span>
-                        </div>
-                      </button>
-                    )
-                  ))}
-                </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <div className="bg-black/5 rounded-[24px] p-6 space-y-6 border border-white/[0.03] shadow-xl">
-              <div className="flex justify-between items-center px-1">
-                  <h4 className="font-bold flex items-center gap-2 text-white text-sm">
-                    <MessageCircle size={16} /> 话题评论 <span className="text-white/20 ml-1 text-xs">{topic.likes}+</span>
-                  </h4>
-              </div>
-              <div className="space-y-4">
-                  {[
-                    { name: '南川', text: '这种拼在一起的日常很有生命力。', time: '12h' },
-                    { name: 'Echo', text: '比普通 vlog 更像一群人的共同记忆。', time: '15h' }
-                  ].map((cmt, i) => (
-                    <div key={cmt.name} className="flex gap-3 group">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${cmt.name}`} alt="" className="w-8 h-8 rounded-full bg-white/5 shrink-0 object-cover border border-white/5" />
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-tighter">{cmt.name}</p>
-                            <span className="text-[8px] font-bold text-white/10 uppercase">{cmt.time} · IP：{['广东', '四川', '浙江', '江苏', '北京', '上海'][i % 6]}</span>
-                          </div>
-                          <p className="text-xs text-white/80 leading-relaxed italic border-l-2 border-white/5 pl-3 py-0.5">{cmt.text}</p>
-                        </div>
-                    </div>
-                  ))}
-              </div>
-              <div className="mt-4 flex gap-2">
-                 <input
-                   className="flex-1 h-11 bg-white/5 border border-white/10 rounded-[16px] px-5 text-xs font-bold focus:border-white/30 outline-none transition-all placeholder:text-white/10"
-                   placeholder="留下你的共创注脚..."
-                 />
-              </div>
-            </div>
-          )}
-        </section>
+        ))}
       </main>
 
-      <footer className="p-6 pt-2 bg-dark/80 backdrop-blur-md border-t border-white/[0.03]">
-        {topic.status !== 'completed' && (
-          <p className="text-[10px] text-white/40 text-center font-medium mb-3">
-             加入话题后，该话题的收益将由同圈创作者评分
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button
-            onClick={() => toggleFavorite(topic.id)}
-            className={`flex-1 h-14 rounded-[18px] font-black text-xs uppercase transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2 ${
-              isFavorite ? 'bg-gold text-dark shadow-gold/20' : 'bg-white/5 text-white/40 border border-white/5'
-            }`}
-          >
-            <Star size={16} className={isFavorite ? 'fill-current' : ''} />
-            <span>{isFavorite ? '已收藏' : '收藏作品'}</span>
+      <footer className="border-t border-[#ececec] bg-[#f7f7f7]/96 px-3 pb-6 pt-2 backdrop-blur-xl">
+        <div className="flex h-12 items-center gap-2 rounded-[20px] bg-white px-2 shadow-sm">
+          <button className="flex h-9 w-9 items-center justify-center rounded-full text-[#7d6f61]" aria-label="Add">
+            <Plus size={22} />
           </button>
-
-          {topic.status !== 'completed' ? (
-            <>
-              <button
-                onClick={() => setScreen('join')}
-                className={`flex-[1.5] h-14 bg-red-primary text-white font-black rounded-[18px] shadow-[0_10px_25px_-5px_rgba(255,36,66,0.5)] active:scale-95 transition-all text-xs uppercase flex items-center justify-center gap-2`}
-              >
-                参与共创
-              </button>
-              <button onClick={() => showToast('进入拍摄后完成你的共创片段')} className="flex-1 h-14 bg-white/5 text-white/40 font-black rounded-[18px] text-xs uppercase border border-white/5 active:scale-95 flex items-center justify-center">
-                拍摄
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setScreen('gift')}
-                className="flex-[1.5] h-14 bg-gold text-dark font-black rounded-[18px] shadow-[0_10px_25px_-5px_rgba(214,178,126,0.5)] active:scale-95 transition-all text-xs uppercase flex items-center justify-center gap-2"
-              >
-                赠送作品
-              </button>
-              <button onClick={() => setIsShareDrawerOpen(true)} className="flex-[1] h-14 bg-white/5 text-white/40 font-black rounded-[18px] text-xs uppercase border border-white/5 active:scale-95 flex items-center justify-center">
-                分享
-              </button>
-            </>
-          )}
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => event.key === 'Enter' && send()}
+            placeholder={`Message ${thread.name}`}
+            className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#a5a5a5]"
+          />
+          <button onClick={send} className="h-9 rounded-full bg-[#241f1b] px-4 text-xs font-black text-white">
+            Send
+          </button>
         </div>
       </footer>
-      <VisibilitySelectorDrawer
-        isOpen={isVisibilityDrawerOpenForClips}
-        onClose={() => setIsVisibilityDrawerOpenForClips(false)}
-        visibility={clipVisibility}
-        setVisibility={setClipVisibility}
-        selectedFriendIds={selectedFriendIds}
-        setSelectedFriendIds={setSelectedFriendIds}
-      />
-      {shareDrawer}
     </div>
   );
-};
+}
 
-// --- Me (Profile) Screen ---
-
-const NetworkListScreen = ({
+function MeScreen({
+  profile,
   setScreen,
-  prevScreen,
-  initialTab,
-  userName = "Wesley"
 }: {
-  setScreen: (s: Screen) => void,
-  prevScreen: Screen,
-  initialTab: 'friends' | 'followers' | 'following',
-  userName?: string
-}) => {
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const users = [
-    { id: '1', name: '林野', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=128&h=128&fit=crop', bio: '记录生活的碎片', isFollowing: true, followsMe: true },
-    { id: '2', name: 'Mia', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop', bio: 'Stay curious.', isFollowing: true, followsMe: true },
-    { id: '3', name: '周屿', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=128&h=128&fit=crop', bio: '捕风者', isFollowing: false, followsMe: true },
-    { id: '4', name: '张震', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=128&h=128&fit=crop', bio: '光影记录家', isFollowing: true, followsMe: false },
-    { id: '5', name: '苏苏', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&h=128&fit=crop', bio: '正在努力共创中', isFollowing: true, followsMe: true },
-    { id: '6', name: 'Echo', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Echo', bio: '灵感捕捉机', isFollowing: false, followsMe: true },
-  ];
-
-  const filteredByTab = users.filter(u => {
-    if (activeTab === 'friends') return u.isFollowing && u.followsMe;
-    if (activeTab === 'following') return u.isFollowing;
-    if (activeTab === 'followers') return u.followsMe;
-    return true;
-  });
-
-  const filteredUsers = filteredByTab.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
+  profile: User;
+  setScreen: (screen: Screen) => void;
+}) {
   return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen(prevScreen)} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex gap-4">
-          {[
-            { id: 'friends', label: '朋友' },
-            { id: 'following', label: '关注' },
-            { id: 'followers', label: '粉丝' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`text-sm font-bold relative pb-1 transition-colors ${activeTab === tab.id ? 'text-[#2f261d]' : 'text-[#b0a08e]'}`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FE2C55] rounded-full" />
-              )}
-            </button>
-          ))}
-        </div>
-        <div className="w-10"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-10">
-        <div className="p-6">
-          <div className="relative group mb-6">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#b0a08e] group-focus-within:text-[#FE2C55] transition-colors" />
-            <input
-              type="text"
-              placeholder="搜索用户..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full h-12 rounded-xl pl-12 pr-4 text-sm font-medium outline-none focus:border-[#FE2C55]/20 transition-all ${lightInputField}`}
-            />
-          </div>
-
-          <div className="space-y-3">
-            {filteredUsers.map(user => (
-              <div
-                key={user.id}
-                className={`flex items-center gap-4 p-4 active:bg-[#faf4ec] transition-all group ${lightSurfaceCard}`}
-                onClick={() => setScreen('user-profile')}
-              >
-                <img src={user.avatar} alt="" className="w-12 h-12 rounded-xl border border-[#eadfce] object-cover" />
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-[#2f261d] text-sm truncate">{user.name}</h4>
-                  <p className="text-[10px] text-[#8f7f6d] mt-1 truncate tracking-wide">{user.bio}</p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); }}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    user.isFollowing ? 'bg-[#f6ede3] text-[#8f7f6d] border border-[#eadfce]' : 'bg-[#FE2C55] text-white shadow-[0_10px_24px_rgba(254,44,85,0.18)]'
-                  }`}
-                >
-                  {user.isFollowing && user.followsMe ? '互相关注' : user.isFollowing ? '已关注' : '关注'}
-                </button>
-              </div>
-            ))}
-            {filteredUsers.length === 0 && (
-              <div className="py-20 text-center space-y-4 opacity-50">
-                <div className="w-16 h-16 bg-white/82 rounded-full flex items-center justify-center mx-auto text-[#d7c6b2] border border-[#eadfce]">
-                  <UserIcon size={32} />
-                </div>
-                <p className="text-[10px] text-[#b0a08e] font-black uppercase tracking-[0.2em]">暂无相关成果</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const MeScreen = ({ setScreen, profile, diamondBalance, energyBalance, likedCount, savedCount, worksCount, setInitialNetworkTab, setSelectedTopic, setCircleIsMyWorkMode, setCircleInitialTopicId, onOpenContent }: {
-  setScreen: (s: Screen) => void,
-  profile: EditableProfile,
-  diamondBalance: number,
-  energyBalance: number,
-  likedCount: number,
-  savedCount: number,
-  worksCount: number,
-  setInitialNetworkTab: (t: 'friends' | 'followers' | 'following') => void,
-  setSelectedTopic: (t: Topic) => void,
-  setCircleIsMyWorkMode: (b: boolean) => void,
-  setCircleInitialTopicId: (id: string | undefined) => void,
-  onOpenContent: (item: HomeFeedItem) => void,
-}) => {
-  const lightCard = '';
-  const [activeGallery, setActiveGallery] = useState<'works' | 'likes' | 'saved'>('works');
-  const [isGrowthDialogOpen, setIsGrowthDialogOpen] = useState(false);
-  const myStartedTopicIds = new Set(['1', '4', '6']);
-
-  const getWorkBadge = (topic: Topic) => {
-    if (topic.creator === CURRENT_USER.name || myStartedTopicIds.has(topic.id)) return '我发起的';
-    if (topic.status !== 'completed') return '待成圈';
-    return '参与共创';
-  };
-
-  const isPendingWork = (topic: Topic) => topic.status !== 'completed';
-
-  const openWork = (topic: Topic) => {
-    setSelectedTopic(topic);
-    if (topic.status === 'completed') {
-      setCircleIsMyWorkMode(true);
-      setCircleInitialTopicId(topic.id);
-      setScreen('circle');
-      return;
-    }
-    setCircleIsMyWorkMode(false);
-    setCircleInitialTopicId(undefined);
-    setScreen('topic-detail');
-  };
-
-  const galleryWorks = [
-    ...TOPICS.slice(0, 6).map((topic, index) => ({
-      id: `topic-${topic.id}`,
-      title: topic.title,
-      image: topic.image || `https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=900&h=1200&fit=crop&sig=${index}`,
-      metric: topic.likes,
-      badge: getWorkBadge(topic),
-      tone: topic.tone,
-      targetScreen: topic.status === 'completed' ? 'circle' : 'topic-detail',
-      topic,
-    })),
-  ];
-
-  const likedWorks = TOPICS.slice(2, 8).map((topic, index) => ({
-    id: `liked-${topic.id}`,
-    title: topic.title,
-    image: topic.image || `https://images.unsplash.com/photo-1495195134817-aeb325a55b65?w=900&h=1200&fit=crop&sig=${index + 12}`,
-    metric: topic.likes,
-    badge: getWorkBadge(topic),
-    tone: topic.tone,
-    targetScreen: 'topic-detail' as Screen,
-    topic,
-  }));
-
-  const savedWorks = TOPICS.slice(4, 10).map((topic, index) => ({
-    id: `saved-${topic.id}`,
-    title: topic.title,
-    image: topic.image || `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=900&h=1200&fit=crop&sig=${index + 24}`,
-    metric: topic.bookmarks || topic.likes,
-    badge: getWorkBadge(topic),
-    tone: topic.tone,
-    targetScreen: 'topic-detail' as Screen,
-    topic,
-  }));
-
-  const activeWorks = activeGallery === 'works' ? galleryWorks : activeGallery === 'likes' ? likedWorks : savedWorks;
-  const getWorkContentItem = (work: typeof activeWorks[number], index: number): HomeFeedItem => {
-    const mediaIndex = index % dailyLifeFrames.length;
-    return {
-      id: work.id,
-      topic: work.topic,
-      mediaIndex,
-      title: work.title,
-      author: dailyLifeUsers[mediaIndex],
-      kind: work.topic.status === 'completed' ? 'collab' : 'video',
-      heightClass: 'aspect-[4/5]',
-    };
-  };
-
-  return (
-    <div className="relative flex flex-col h-full bg-[#fffaf7] pt-8 text-[#1f1a17]">
-      <header className="absolute left-0 right-0 top-8 z-30 flex justify-end gap-2 px-7 py-3 pointer-events-none">
-        <button onClick={() => setScreen('settings')} className="w-10 h-10 rounded-full flex items-center justify-center bg-white text-[#241f1b] shadow-[0_6px_18px_rgba(31,26,23,0.10)] active:scale-95 transition-transform pointer-events-auto">
+    <div className={pageRoot}>
+      <header className="absolute left-0 right-0 top-8 z-30 flex justify-end gap-2 px-7 py-3">
+        <button onClick={() => setScreen('settings')} className={iconButton} aria-label="Settings">
           <Settings size={20} />
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-32">
-        <section
-          onClick={() => setScreen('personal-profile')}
-          className={`${lightCard} -mx-4 -mt-8 px-4 pt-24 pb-4 cursor-pointer group active:scale-[0.99] transition-all relative overflow-hidden`}
-        >
-          <div className="relative flex items-start gap-4">
-            <div className="relative shrink-0">
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                className="w-[82px] h-[82px] rounded-full object-cover ring-4 ring-white shadow-[0_10px_22px_rgba(31,26,23,0.12)]"
-              />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2.5 py-1 flex items-center gap-1 rounded-full text-[11px] font-black text-[#ff2442] shadow-sm bg-white">
-                <Flame size={11} fill="currentColor" /> {CURRENT_USER.streak}
-              </div>
+      <main className="flex-1 overflow-y-auto px-4 pb-32 pt-16 no-scrollbar">
+        <section className="rounded-[28px] bg-white p-5 shadow-[0_16px_36px_rgba(103,81,58,0.08)]">
+          <button onClick={() => setScreen('profile')} className="flex w-full items-center gap-4 text-left">
+            <img src={profile.avatar} alt="" className="h-20 w-20 rounded-full object-cover shadow-sm" />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-2xl font-black">{profile.name}</h1>
+              <p className="mt-1 text-sm font-bold text-[#8f7f6d]">@{profile.handle}</p>
+              <p className="mt-2 line-clamp-2 text-xs font-bold leading-relaxed text-[#6f6256]">{profile.bio}</p>
             </div>
-
-            <div className="flex-1 min-w-0 pt-1 text-left">
-              <div className="flex items-start justify-between gap-3">
-                <h1 className="min-w-0 text-[23px] font-black text-[#1f1a17] tracking-tight leading-tight">{profile.name}</h1>
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <p className="text-[#7a7470]">@{profile.userId}</p>
-                <span className="text-[13px] font-bold text-[#9a928c]">IP：{profile.ipLocation}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative mt-5 flex items-center gap-3 px-1 py-1">
-            <div className="grid flex-1 grid-cols-4 gap-2">
-              <button onClick={(e) => { e.stopPropagation(); setInitialNetworkTab('friends'); setScreen('network-list'); }} className="text-center">
-                <p className="text-[17px] font-black text-[#1f1a17] leading-none">3</p>
-                <p className="mt-1 text-[10px] text-[#8f8781] font-bold">好友</p>
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setInitialNetworkTab('following'); setScreen('network-list'); }} className="text-center">
-                <p className="text-[17px] font-black text-[#1f1a17] leading-none">{CURRENT_USER.following}</p>
-                <p className="mt-1 text-[10px] text-[#8f8781] font-bold">关注</p>
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setInitialNetworkTab('followers'); setScreen('network-list'); }} className="text-center">
-                <p className="text-[17px] font-black text-[#1f1a17] leading-none">{CURRENT_USER.followers}</p>
-                <p className="mt-1 text-[10px] text-[#8f8781] font-bold">粉丝</p>
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setScreen('energy-detail'); }} className="text-center">
-                <p className="text-[17px] font-black text-[#1f1a17] leading-none">1.2w</p>
-                <p className="mt-1 text-[10px] text-[#8f8781] font-bold">获赞</p>
-              </button>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setScreen('personal-profile');
-              }}
-              className="h-9 shrink-0 rounded-[10px] bg-white px-3 text-[11px] font-black text-[#241f1b] shadow-[0_6px_18px_rgba(31,26,23,0.08)] active:scale-95 transition-transform"
-            >
-              编辑资料
-            </button>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setScreen('personal-profile');
-            }}
-            className="relative mt-4 flex items-center gap-1.5 px-6 text-left text-[#6f6863] text-[13px] leading-relaxed active:scale-[0.99] transition-transform"
-          >
-            <span>{profile.bio}</span>
-            <Pencil size={13} className="shrink-0 text-[#8f8781]" />
+            <ChevronRight size={18} className="text-[#b0a08e]" />
           </button>
+        </section>
 
-          <div className="mt-5 grid grid-cols-2 gap-2.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setScreen('couple-space');
-              }}
-              className="rounded-[18px] bg-white px-3.5 py-3 text-left shadow-[0_10px_28px_rgba(31,26,23,0.06)] active:scale-95 transition-transform min-h-[76px]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fff0f3] text-[#ff2442]">
-                  <CalendarHeart size={18} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black tracking-wide text-[#ff2442] leading-tight">情侣空间</p>
-                  <p className="mt-0.5 truncate text-[14px] font-black text-[#1f1a17] leading-tight">共建关系地图</p>
-                </div>
-              </div>
-            </button>
+        <section className="mt-4 grid grid-cols-3 gap-3">
+          {[
+            ['Posts', profile.posts.toString()],
+            ['Following', profile.following.toLocaleString()],
+            ['Followers', profile.followers.toLocaleString()],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-[18px] bg-white p-4 text-center shadow-sm">
+              <p className="text-lg font-black">{value}</p>
+              <p className="mt-1 text-[10px] font-bold text-[#8f7f6d]">{label}</p>
+            </div>
+          ))}
+        </section>
 
+        <section className="mt-4 rounded-[24px] bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-black">Open Sections</h2>
+          <div className="mt-3 space-y-2">
             {[
-              { label: '智能戒指', value: '86', icon: ShieldCheck, action: () => setScreen('smart-ring'), tone: 'bg-[#f8f6f3]', valueClass: '' },
-              { label: '我的钻石', value: diamondBalance.toLocaleString(), icon: Gem, action: () => setScreen('recharge'), tone: 'bg-[#f5f7fb]', valueClass: '' },
-              { label: 'DR商城', value: energyBalance.toLocaleString(), icon: Star, action: () => setScreen('shop'), tone: 'bg-[#f8f6f3]', valueClass: '' },
+              { label: 'Profile', screen: 'profile' as const },
+              { label: 'Reserved Space', screen: 'reserved-space' as const },
+              { label: 'Settings', screen: 'settings' as const },
             ].map((item) => (
               <button
                 key={item.label}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  item.action();
-                }}
-                className="rounded-[18px] bg-white px-3.5 py-3 text-left shadow-[0_10px_28px_rgba(31,26,23,0.06)] active:scale-95 transition-transform min-h-[76px]"
+                onClick={() => setScreen(item.screen)}
+                className="flex h-12 w-full items-center justify-between rounded-xl bg-[#f8f1e8] px-4 text-sm font-black active:scale-[0.99] transition-transform"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full ${item.tone} flex items-center justify-center text-[#1f1a17] shrink-0`}>
-                    <item.icon size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black text-[#6f6863] tracking-wide leading-tight">{item.label}</p>
-                    <p className="mt-0.5 text-[16px] font-black text-[#1f1a17] truncate">{item.value}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <button
-          onClick={() => setIsGrowthDialogOpen(true)}
-          className="mt-1.5 w-full rounded-[16px] bg-white/90 px-3.5 py-2.5 text-left shadow-[0_8px_22px_rgba(103,81,58,0.08)] active:scale-[0.99] transition-transform"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2f261d] text-white">
-              <ClipboardCheck size={18} strokeWidth={2.5} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-[14px] font-black leading-tight tracking-tight text-[#2f261d]">今日成长 2/3</h3>
-              <p className="mt-0.5 truncate text-[11px] font-bold text-[#8f7f6d]">参与一个待成圈话题，可点亮今日记录</p>
-            </div>
-            <span className="shrink-0 rounded-full bg-[#FE2C55] px-4 py-2 text-xs font-black text-white shadow-[0_8px_18px_rgba(254,44,85,0.20)]">
-              去完成
-            </span>
-          </div>
-        </button>
-
-        <section className="mt-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex bg-white/82 rounded-full p-1 shadow-sm">
-              {[
-                { id: 'works', label: '作品', count: 12 + worksCount },
-                { id: 'likes', label: '喜欢', count: likedCount },
-                { id: 'saved', label: '收藏', count: savedCount },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveGallery(tab.id as 'works' | 'likes' | 'saved')}
-                  className={`px-4 py-2 rounded-full text-xs font-black transition-all ${
-                    activeGallery === tab.id
-                      ? 'bg-[#2f261d] text-white shadow-sm'
-                      : 'text-[#8f7f6d]'
-                  }`}
-                >
-                  {tab.label} {tab.count}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-3 items-start">
-            {activeWorks.map((work, index) => (
-              <button
-                key={work.id}
-                onClick={() => {
-                  onOpenContent(getWorkContentItem(work, index));
-                }}
-                className="group overflow-hidden rounded-[18px] bg-white text-left shadow-[0_10px_26px_rgba(103,81,58,0.08)] border border-[#eadfce] active:scale-[0.98] transition-transform"
-              >
-                <div className="relative aspect-[4/5] flex items-center justify-center overflow-hidden bg-[#eadfce]">
-                  {work.topic.status === 'completed' ? (
-                    <div className="grid h-full w-full grid-cols-2 grid-rows-6 gap-px bg-black">
-                      {Array.from({ length: 12 }).map((_, frameIndex) => {
-                        const frameSeed = (index + frameIndex) % dailyLifeFrames.length;
-                        return (
-                          <div key={frameIndex} className="relative overflow-hidden bg-[#e6ddd2]">
-                            <img
-                              src={dailyLifeFrames[frameSeed]}
-                              alt=""
-                              className="h-full w-full object-cover transition-transform duration-500 group-active:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/62 via-black/12 to-black/18" />
-                            <div className="absolute inset-x-1.5 top-1/2 -translate-y-1/2">
-                              <p className="line-clamp-2 text-center text-[10px] font-black leading-tight text-white drop-shadow-[0_2px_7px_rgba(0,0,0,0.58)]">
-                                {dailyLifeCaptions[frameSeed]}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <img
-                      src={work.image}
-                      alt=""
-                      className="h-full w-full object-cover transition-transform duration-500 group-active:scale-105"
-                    />
-                  )}
-                  {work.topic.status === 'completed' && (
-                    <span className="absolute right-2 top-2 rounded-full bg-black/58 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur-md">
-                      共创
-                    </span>
-                  )}
-                  {work.topic.status !== 'completed' && (
-                    <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/58 text-white shadow-sm backdrop-blur-md">
-                      <Play size={13} className="ml-0.5 fill-current" strokeWidth={3} />
-                    </span>
-                  )}
-                  <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/58 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur-md">
-                    <Eye size={11} />
-                    {work.metric}
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/42 via-transparent to-black/5" />
-                </div>
-                <div className="p-3">
-                  <h4 className="line-clamp-2 text-[13px] font-black leading-snug text-[#2f261d]">
-                    {work.title}
-                  </h4>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center">
-                      {Array.from({ length: Math.min(5, work.topic.joinedCount) }).map((_, avatarIndex) => {
-                        const name = dailyLifeUsers[(index + avatarIndex) % dailyLifeUsers.length];
-                        return (
-                          <img
-                            key={`${work.id}-creator-${name}-${avatarIndex}`}
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`}
-                            alt=""
-                            className={`h-5 w-5 shrink-0 rounded-full border border-white bg-[#f6ede3] ${avatarIndex > 0 ? '-ml-1.5' : ''}`}
-                          />
-                        );
-                      })}
-                      {work.topic.joinedCount > 5 && (
-                        <span className="-ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-white bg-[#f2e7db] px-1 text-[8px] font-black text-[#8f7f6d]">
-                          +{work.topic.joinedCount - 5}
-                        </span>
-                      )}
-                    </div>
-                    <span className="flex items-center gap-1 text-[10px] font-black text-[#b0a08e]">
-                      <Heart size={11} />
-                      {index + 12}
-                    </span>
-                  </div>
-                </div>
+                {item.label}
+                <ChevronRight size={16} className="text-[#b0a08e]" />
               </button>
             ))}
           </div>
         </section>
       </main>
-
-      <AnimatePresence>
-        {isGrowthDialogOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsGrowthDialogOpen(false)}
-            className="absolute inset-0 z-[120] bg-black/35 backdrop-blur-sm flex items-center justify-center p-5"
-          >
-            <motion.div
-              initial={{ y: 28, opacity: 0, scale: 0.98 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 28, opacity: 0, scale: 0.98 }}
-              transition={{ type: 'spring', damping: 24, stiffness: 220 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-[360px] rounded-[24px] bg-[#fffaf4] px-5 pt-5 pb-6 text-[#2f261d] shadow-[0_24px_70px_rgba(78,56,35,0.24)]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#b4834a]">今日成长</p>
-                  <h3 className="mt-1 text-2xl font-black tracking-tight">2/3 已完成</h3>
-                  <p className="mt-1 text-[12px] font-bold text-[#8f7f6d]">参与一个待成圈话题，就能点亮今日记录。</p>
-                </div>
-                <button
-                  onClick={() => setIsGrowthDialogOpen(false)}
-                  className="w-9 h-9 rounded-full bg-white text-[#7b6b5c] shadow-sm flex items-center justify-center active:scale-95 transition-transform shrink-0"
-                  aria-label="关闭"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <button
-                onClick={() => setIsGrowthDialogOpen(false)}
-                className="mt-5 w-full rounded-[18px] bg-white px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-black text-[#8f7f6d]">最接近成圈</p>
-                    <p className="mt-1 text-sm font-black text-[#2f261d]">今天的城市声音</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-[#b4834a]">6/8</p>
-                    <p className="text-[9px] font-black text-[#aa9a86]">人数</p>
-                  </div>
-                </div>
-                <div className="mt-4 h-2 rounded-full bg-[#ebe2d4] overflow-hidden">
-                  <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-[#edbd79] to-[#ff2e67]" />
-                </div>
-              </button>
-
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[
-                  { title: '浏览 3 个共创', done: '3/3', reward: '+20', primary: true },
-                  { title: '回应一位好友', done: '0/1', reward: '+50' },
-                  { title: '参与待成圈话题', done: '0/2', reward: '+100' },
-                ].map((task, taskIndex) => (
-                  <div
-                    key={task.title}
-                    className={`rounded-[16px] border px-3 py-3 text-left shadow-sm ${
-                      task.primary ? 'border-[#ffbed0] bg-[#fff6f8]' : 'border-[#eadfce] bg-white'
-                    }`}
-                  >
-                    <p className="min-h-[32px] text-[11px] font-black leading-snug text-[#4a3a2a]">{task.title}</p>
-                    <div className="mt-3 flex items-center justify-between gap-1">
-                      <span className={`text-[10px] font-black ${task.primary ? 'text-[#FE2C55]' : 'text-[#b4834a]'}`}>{task.done}</span>
-                      <span className="inline-flex items-center whitespace-nowrap rounded-full bg-[#fff1d8] px-2 py-0.5 text-[9px] font-black leading-none text-[#b4834a]">⚡ {task.reward}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setIsGrowthDialogOpen(false);
-                        if (taskIndex === 1) {
-                          setScreen('messages');
-                        } else if (taskIndex === 2) {
-                          setScreen('home');
-                        } else if (!task.primary) {
-                          setScreen('circle');
-                        }
-                      }}
-                      className={`mt-3 h-8 w-full rounded-full text-[10px] font-black active:scale-95 transition-transform ${
-                        task.primary ? 'bg-[#FE2C55] text-white' : 'bg-[#2f261d] text-white'
-                      }`}
-                    >
-                      {task.primary ? '领取' : '去完成'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
-};
+}
 
-// --- Messages Screen ---
-
-const MessagesScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  const conversations = [
-    { name: '系统通知', msg: '《下班后的三十分钟》已完成，可以查看成圈作品', time: '周一', unread: 0, tag: '官方' },
-    { name: '迪儿7P2B6SG', msg: '我刚拍了一段 3 秒片段，顺手把声音也录进去了', time: '09:41', unread: 2, tag: '共创 12 次' },
-    { name: '迪儿8JQB6SG', msg: '谢谢你给早餐桌送的礼物', time: '昨天', unread: 0, tag: '好友' },
-    { name: '迪儿4K9B6SG', msg: '我还差一段夜景片段，等你一起补齐', time: '昨天', unread: 1, tag: '共创中' },
-    { name: '迪儿9M2B6SG', msg: '这个主题我也想参与，先收藏了', time: '周二', unread: 0, tag: '' },
-    { name: '迪儿3R8B6SG', msg: '上次那条成圈作品质感很好', time: '周一', unread: 0, tag: '共创 3 次' },
-  ];
-
+function ReservedSpacePlaceholder({
+  setScreen,
+}: {
+  setScreen: (screen: Screen) => void;
+}) {
   return (
-    <div className="flex flex-col h-full bg-[#f7f7f7] pt-8 text-[#161616]">
-      <header className="px-5 pt-4 pb-3 sticky top-0 bg-[#f7f7f7]/96 backdrop-blur-xl z-20">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[26px] font-black text-[#161616] tracking-tight">消息</h1>
-          <div className="w-9 h-9" />
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
-         <div className="bg-white">
-            {conversations.map((convo) => (
-              <div
-                key={convo.name}
-                onClick={() => setScreen('dm')}
-                className="flex items-center px-4 py-3 active:bg-[#f7f7f7] transition-colors cursor-pointer relative"
-              >
-                 <div className="relative">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${convo.name}`} alt="" className="w-[52px] h-[52px] rounded-full bg-[#f3f3f3] object-cover" />
-                    {convo.unread > 0 && (
-                       <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#FE2C55] rounded-full flex items-center justify-center border-2 border-white">
-                          <span className="text-[10px] font-black text-white">{convo.unread}</span>
-                       </div>
-                    )}
-                 </div>
-                 <div className="ml-3 flex-1 min-w-0 py-1">
-                    <div className="flex justify-between items-center gap-3">
-                       <div className="flex items-center gap-2 min-w-0">
-                         <h4 className="text-[16px] font-black text-[#161616] truncate">{convo.name}</h4>
-                         {convo.tag && (
-                           <span className="shrink-0 rounded-full bg-[#f4f4f4] px-2 py-0.5 text-[9px] font-black text-[#8b8b8b]">{convo.tag}</span>
-                         )}
-                       </div>
-                       <span className="shrink-0 text-[11px] text-[#a6a6a6]">{convo.time}</span>
-                    </div>
-                    <p className="text-[14px] text-[#8f8f8f] truncate mt-1.5">{convo.msg}</p>
-                 </div>
-              </div>
-            ))}
-         </div>
-      </main>
-    </div>
-  );
-};
-
-// --- Friends Screen ---
-
-const FriendsScreen = ({ setScreen, setSelectedUserName, initialTab = 'friends' }: { setScreen: (s: Screen) => void, setSelectedUserName: (name: string) => void, initialTab?: 'friends' | 'followers' | 'following' }) => {
-  const [activeTab, setActiveTab] = useState<'friends' | 'followers' | 'following'>(initialTab);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const users = [
-    { id: '1', name: '林野', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=128&h=128&fit=crop', bio: '记录生活的碎片', isFollowing: true, followsMe: true },
-    { id: '2', name: 'Mia', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop', bio: 'Stay curious.', isFollowing: true, followsMe: true },
-    { id: '3', name: '周屿', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=128&h=128&fit=crop', bio: '捕风者', isFollowing: false, followsMe: true },
-    { id: '4', name: '张震', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=128&h=128&fit=crop', bio: '光影记录家', isFollowing: true, followsMe: false },
-    { id: '5', name: '苏苏', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&h=128&fit=crop', bio: '正在努力共创中', isFollowing: true, followsMe: true },
-    { id: '6', name: 'Echo', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Echo', bio: '灵感捕捉机', isFollowing: false, followsMe: true },
-  ];
-
-  const filteredByTab = users.filter(u => {
-    if (activeTab === 'friends') return u.isFollowing && u.followsMe;
-    if (activeTab === 'following') return u.isFollowing;
-    if (activeTab === 'followers') return u.followsMe;
-    return true;
-  });
-
-  const filteredUsers = filteredByTab.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  const renderUserList = (userList: typeof users) => (
-    <div className="divide-y divide-white/[0.03]">
-      {userList.map(user => (
-        <div
-          key={user.id}
-          onClick={() => {
-              setSelectedUserName(user.name);
-              setScreen('user-profile');
-          }}
-          className="flex items-center px-6 py-4 active:bg-white/[0.02] transition-all cursor-pointer"
-        >
-          <img src={user.avatar} alt="" className="w-12 h-12 rounded-xl bg-white/10 border border-white/5 object-cover" />
-          <div className="ml-4 flex-1">
-              <p className="text-[17px] font-bold text-white">{user.name}</p>
-              <p className="text-xs text-white/30 truncate mt-0.5">{user.bio}</p>
-          </div>
-          <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedUserName(user.name);
-                setScreen('dm');
-              }}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase border border-white/5 rounded-lg transition-all"
-          >
-            私信
-          </button>
-        </div>
-      ))}
-      {userList.length === 0 && (
-        <div className="py-20 text-center opacity-40">
-          <p className="text-xs font-black uppercase tracking-widest">暂无相关人员</p>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderContent = () => {
-    if (activeTab === 'friends') {
-      return (
-        <>
-          <div className="px-6 mb-6">
-            <div className="p-6 bg-gradient-to-br from-[#eef8f1] to-[#fffaf5] rounded-[24px] border border-[#d8eadf] space-y-3 shadow-[0_18px_40px_rgba(103,81,58,0.06)]">
-              <p className="text-xs font-black uppercase text-emerald-500 tracking-widest">好友定义</p>
-              <h3 className="text-xl font-bold leading-tight text-[#2f261d]">互相关注的人，就是好友。</h3>
-              <p className="text-[#8f7f6d] text-xs leading-relaxed">好友可直接发起私信，也可以在共创召集中作为第一顺位被邀请。</p>
-            </div>
-          </div>
-          {renderUserList(filteredUsers)}
-        </>
-      );
-    }
-    return renderUserList(filteredUsers);
-  };
-
-
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
+    <div className={pageRoot}>
+      <header className={headerRoot}>
+        <button onClick={() => setScreen('me')} className={iconButton} aria-label="Back">
           <ArrowLeft size={20} />
         </button>
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveTab('friends')}
-            className={`font-bold transition-colors ${activeTab === 'friends' ? 'text-[#2f261d]' : 'text-[#b0a08e]'}`}
-          >
-            好友
-          </button>
-          <button
-            onClick={() => setActiveTab('following')}
-            className={`font-bold transition-colors ${activeTab === 'following' ? 'text-[#2f261d]' : 'text-[#b0a08e]'}`}
-          >
-            关注
-          </button>
-          <button
-            onClick={() => setActiveTab('followers')}
-            className={`font-bold transition-colors ${activeTab === 'followers' ? 'text-[#2f261d]' : 'text-[#b0a08e]'}`}
-          >
-            粉丝
-          </button>
-        </div>
-        <div className="w-10 h-10"></div>
+        <h1 className="text-xl font-black">Reserved Space</h1>
+        <div className="h-10 w-10" />
       </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-12">
-        {renderContent()}
-      </main>
-    </div>
-  );
-};
-
-// --- Settings Screen ---
-
-const SettingsScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  return (
-    <div className={`${lightPageRootPadded} overflow-y-auto no-scrollbar pb-10`}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d]">系统设置</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <main className="flex-1 px-6 space-y-4">
-        { [
-          { icon: UserIcon, label: '账号资料', desc: '昵称、头像、简介', screen: 'account-profile' },
-          { icon: ShieldCheck, label: '隐私政策', desc: '关注、作品、私信权限', screen: 'privacy-policy' },
-          { icon: Bell, label: '通知设置', desc: '成圈、关注、评论提醒', screen: 'notification-settings' },
-          { icon: Lock, label: '黑名单列表', desc: '管理已拉黑的账号', screen: 'blacklist' },
-          { icon: MessageSquare, label: '用户反馈', desc: '在使用中遇到问题或建议', screen: 'feedback' },
-        ].map(item => (
-          <div
-            key={item.label}
-            onClick={() => setScreen(item.screen as any)}
-            className={`p-4 flex items-center gap-4 active:bg-[#faf4ec] transition-colors cursor-pointer ${lightSurfaceCard}`}
-          >
-             <div className="w-10 h-10 rounded-lg flex items-center justify-center text-[#8f7f6d] bg-[#f6ede3] border border-[#eadfce]">
-                <item.icon size={20} />
-             </div>
-             <div className="flex-1">
-                <p className="text-sm font-bold text-[#2f261d]">{item.label}</p>
-                <p className="text-[10px] text-[#8f7f6d] font-black uppercase tracking-widest mt-0.5">{item.desc}</p>
-             </div>
-             <ChevronRight size={16} className="text-[#c0b09d]" />
-          </div>
-        ))}
-
-        <div className="pt-8">
-           <button onClick={() => setScreen('login')} className="w-full h-14 rounded-xl text-rose-500 font-bold text-sm active:scale-95 transition-transform uppercase tracking-widest border border-rose-200 bg-white/82 shadow-sm">
-              退出当前账号
-           </button>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const BlacklistScreen = ({ setScreen, blockedUserNames, unblockUser }: {
-  setScreen: (s: Screen) => void,
-  blockedUserNames: string[],
-  unblockUser: (name: string) => void,
-}) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('settings')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">黑名单列表</h2>
-        <div className="w-10"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-6 py-4">
-        {blockedUserNames.length > 0 ? (
-          <div className="space-y-3">
-            {blockedUserNames.map((name) => (
-              <div key={name} className={`flex items-center gap-3 p-4 rounded-[18px] ${lightSurfaceCard}`}>
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-12 w-12 rounded-xl bg-[#f6ede3] object-cover" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-black text-[#2f261d]">{name}</p>
-                  <p className="mt-0.5 text-[10px] font-black uppercase tracking-widest text-[#a79584]">已限制互动与私信</p>
-                </div>
-                <button
-                  onClick={() => unblockUser(name)}
-                  className="h-9 rounded-full border border-[#eadfce] bg-white px-4 text-[11px] font-black text-[#2f261d] active:scale-95 transition-transform"
-                >
-                  解除
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[18px] bg-white/72 text-[#c0b09d] shadow-sm">
-              <Lock size={26} />
-            </div>
-            <p className="font-black text-[#2f261d]">暂无黑名单账号</p>
-            <p className="mt-2 max-w-[220px] text-xs font-bold leading-relaxed text-[#8f7f6d]">
-              被拉黑的人会出现在这里，你可以随时解除限制。
-            </p>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-};
-
-const REPORT_REASONS = [
-  '发布不当的内容或信息',
-  '传播色情资源、引导私下交易',
-  '侵犯权益',
-  '未成年相关',
-  '冒充他人',
-  '涉嫌欺诈',
-  '危害人身安全',
-  '网络暴力',
-  '我不喜欢这个账号及内容',
-];
-
-const VIDEO_REPORT_REASONS = [
-  '我不喜欢',
-  '侵犯权益',
-  '色情低俗',
-  '违法犯罪',
-  '政治敏感',
-  '违规营销',
-  '不实信息',
-  '网络暴力',
-  '危害人身安全',
-  '未成年相关',
-];
-
-const ReportUserScreen = ({ setScreen, targetName, reportType, showToast }: {
-  setScreen: (s: Screen) => void,
-  targetName: string,
-  reportType: 'account' | 'video',
-  showToast: (m: string) => void,
-}) => {
-  const [reason, setReason] = useState('');
-  const isVideoReport = reportType === 'video';
-  const reasons = isVideoReport ? VIDEO_REPORT_REASONS : REPORT_REASONS;
-
-  return (
-    <div className="flex h-full flex-col bg-[#f3f6fc] pt-8 text-[#161616]">
-      <header className="flex items-center justify-between px-5 py-4">
-        <button onClick={() => setScreen(isVideoReport ? 'home' : 'user-profile')} className="flex h-10 w-10 items-center justify-center rounded-xl text-[#161616] active:scale-95 transition-transform">
-          <ArrowLeft size={24} strokeWidth={2.5} />
-        </button>
-        <h2 className="text-lg font-black">{isVideoReport ? '话题举报' : '账号举报'}</h2>
-        <div className="w-10"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-4">
-        <div className="mb-4 px-2 text-xs font-bold text-[#7d8795]">举报对象：{targetName}</div>
-        <div className="overflow-hidden rounded-[16px] bg-white shadow-sm">
-          {reasons.map((item, index) => (
-            <button
-              key={item}
-              onClick={() => setReason(item)}
-              className={`flex w-full items-center justify-between px-5 py-5 text-left active:bg-[#f7f8fb] transition-colors ${
-                index === reasons.length - 1 ? '' : 'border-b border-[#edf0f5]'
-              }`}
-            >
-              <span className="pr-4 text-[17px] font-medium leading-snug text-[#222]">{item}</span>
-              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                reason === item ? 'border-[#6f91f5] bg-[#6f91f5]' : 'border-[#b8bdc5]'
-              }`}>
-                {reason === item && <Check size={12} className="text-white" strokeWidth={4} />}
-              </span>
-            </button>
-          ))}
-        </div>
-      </main>
-
-      <div className="px-4 pb-8 pt-3">
-        <button
-          disabled={!reason}
-          onClick={() => {
-            showToast('举报已提交');
-            setScreen('report-success');
-          }}
-          className="h-14 w-full rounded-xl bg-[#2f261d] text-lg font-black text-white shadow-[0_14px_28px_rgba(47,38,29,0.16)] transition-transform active:scale-95 disabled:bg-[#d8cbbb] disabled:text-white/80 disabled:shadow-none"
-        >
-          下一步
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const ReportSuccessScreen = ({ setScreen, targetName }: {
-  setScreen: (s: Screen) => void,
-  targetName: string,
-}) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <main className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#eaf7ef] text-emerald-500 shadow-sm">
-          <Check size={36} strokeWidth={3.5} />
-        </div>
-        <h1 className="text-2xl font-black text-[#2f261d]">举报已提交</h1>
-        <p className="mt-3 text-sm font-bold leading-relaxed text-[#8f7f6d]">
-          我们会尽快核查 {targetName} 的相关内容，并在必要时采取处理措施。
-        </p>
-      </main>
-      <div className="px-6 pb-10">
-        <button
-          onClick={() => setScreen('home')}
-          className="h-14 w-full rounded-xl bg-[#2f261d] text-sm font-black text-white shadow-[0_14px_28px_rgba(47,38,29,0.14)] active:scale-95 transition-transform"
-        >
-          完成
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const AccountProfileScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('settings')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">帐号资料</h2>
-        <div className="w-10"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-6 py-4">
-        <div className="flex flex-col items-center mt-6 mb-8">
-          <div className="w-24 h-24 rounded-[24px] bg-white/82 flex items-center justify-center border-4 border-white relative shadow-lg">
-            <UserIcon size={40} className="text-[#c8b8a7]" />
-            <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-[#FE2C55] flex items-center justify-center border-2 border-white active:scale-95 transition-transform shadow-lg">
-              <Camera size={14} className="text-white" />
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-[#b0a08e] uppercase tracking-widest pl-4">昵称</label>
-            <div className={`w-full px-4 py-4 rounded-2xl text-[#2f261d] font-bold flex justify-between items-center ${lightSurfaceCard}`}>
-              <span>{CURRENT_USER.name}</span>
-              <ChevronRight size={16} className="text-[#c0b09d]" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-[#b0a08e] uppercase tracking-widest pl-4">简介</label>
-            <div className={`w-full px-4 py-4 rounded-2xl text-[#2f261d] font-bold flex justify-between items-center ${lightSurfaceCard}`}>
-              <span className="text-[#8f7f6d] text-sm truncate">添加简介，让大家更好认识你</span>
-              <ChevronRight size={16} className="text-[#c0b09d]" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-[#b0a08e] uppercase tracking-widest pl-4">性别</label>
-            <div className={`w-full px-4 py-4 rounded-2xl text-[#2f261d] font-bold flex justify-between items-center ${lightSurfaceCard}`}>
-              <span className="text-[#8f7f6d] text-sm">不公开</span>
-              <ChevronRight size={16} className="text-[#c0b09d]" />
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const PrivacyPolicyScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('settings')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">隐私政策</h2>
-        <div className="w-10"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 space-y-6 text-[#6f6256] text-sm leading-relaxed">
-        <h3 className="text-xl font-bold text-[#2f261d]">Dream Record 隐私保护指引</h3>
-        <p>本指引旨在帮助你了解我们如何收集、使用、存储及分享你的个人信息，以及你如何管理这些信息。</p>
-
-        <h4 className="font-bold text-[#2f261d] text-base">1. 我们收集的信息</h4>
-        <p>当你使用本应用时，为了提供基本服务，我们可能会收集你的设备信息、网络信息、使用日志等数据。</p>
-
-        <h4 className="font-bold text-[#2f261d] text-base">2. 信息的存储</h4>
-        <p>我们承诺将你的信息存储在安全可靠的环境中，采用加密等技术措施保护数据安全。</p>
-
-        <h4 className="font-bold text-[#2f261d] text-base">3. 信息的使用</h4>
-        <p>收集的信息将专门用于持续优化产品体验、为你推荐个性化内容等，绝不出售给任何第三方。</p>
-
-        <h4 className="font-bold text-[#2f261d] text-base">4. 你的权利</h4>
-        <p>你有权随时查询、更正或要求删除你的个人信息，也可以在账号设置中管理各类隐私权限选项。</p>
-      </main>
-    </div>
-  );
-};
-
-const NotificationSettingsScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('settings')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">通知设置</h2>
-        <div className="w-10"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-6 py-4">
-        <div className="space-y-4">
-          <div className={`flex items-center justify-between p-5 rounded-2xl ${lightSurfaceCard}`}>
-            <div>
-              <p className="text-base font-bold text-[#2f261d] mb-0.5">消息通知</p>
-              <p className="text-[10px] text-[#8f7f6d]">接收私信、群聊等即时消息</p>
-            </div>
-            <div className="w-12 h-6 rounded-full bg-[#FE2C55] flex items-center px-1">
-              <div className="w-4 h-4 rounded-full bg-white translate-x-6" />
-            </div>
-          </div>
-
-          <div className={`flex items-center justify-between p-5 rounded-2xl ${lightSurfaceCard}`}>
-            <div>
-              <p className="text-base font-bold text-[#2f261d] mb-0.5">互动通知</p>
-              <p className="text-[10px] text-[#8f7f6d]">有点赞、评论、关注时提醒我</p>
-            </div>
-            <div className="w-12 h-6 rounded-full bg-[#eadfce] flex items-center px-1">
-              <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
-            </div>
-          </div>
-
-          <div className={`flex items-center justify-between p-5 rounded-2xl ${lightSurfaceCard}`}>
-            <div>
-              <p className="text-base font-bold text-[#2f261d] mb-0.5">系统公告</p>
-              <p className="text-[10px] text-[#8f7f6d]">接收应用更新与重要活动通知</p>
-            </div>
-            <div className="w-12 h-6 rounded-full bg-[#FE2C55] flex items-center px-1">
-              <div className="w-4 h-4 rounded-full bg-white translate-x-6" />
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// --- Saved Topics Screen ---
-
-const TopicCollectionScreen = ({ setScreen, topicsList, setSelectedTopic, topicIds, title, emptyText, emptyIcon }: {
-  setScreen: (s: Screen) => void,
-  topicsList: Topic[],
-  setSelectedTopic: (t: Topic) => void,
-  topicIds: Set<string>,
-  title: string,
-  emptyText: string,
-  emptyIcon: React.ReactNode
-}) => {
-  const topics = topicsList.filter(t => topicIds.has(t.id));
-
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d]">{title}</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <main className="flex-1 p-6 overflow-y-auto no-scrollbar pb-6">
-        {topics.length === 0 ? (
-          <div className="py-20 text-center space-y-4">
-             <div className="w-16 h-16 bg-white/82 rounded-full flex items-center justify-center mx-auto text-[#d7c6b2] border border-[#eadfce]">
-                {emptyIcon}
-             </div>
-             <p className="text-[#b0a08e] font-black uppercase text-xs tracking-widest">{emptyText}</p>
-          </div>
-        ) : (
-          <div className="columns-2 gap-4 space-y-4">
-             {topics.map((topic, i) => (
-                <motion.div
-                  key={`${topic.id}-${i}`}
-                  whileHover={{ scale: 1.02 }}
-                  onClick={() => {
-                    setSelectedTopic(topic);
-                    setScreen('topic-detail');
-                  }}
-                  className={`break-inside-avoid p-4 space-y-3 shadow-lg cursor-pointer ${lightSurfaceCard}`}
-                >
-                   <div className={`aspect-[3/4] rounded-xl bg-gradient-to-br relative overflow-hidden ${
-                     topic.tone === 'amber' ? 'from-[#fff2df] to-[#f6ede3]' :
-                     topic.tone === 'green' ? 'from-[#eef8f1] to-[#f6ede3]' : 'from-[#eef3fb] to-[#f6ede3]'
-                   }`}>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-15">
-                        <Users size={48} className="text-[#bcae9d]" />
-                      </div>
-                      {topic.status === 'completed' ? (
-                        <div className="absolute top-2 right-2 bg-emerald-100 px-2 py-0.5 rounded text-[8px] font-black uppercase text-emerald-600">
-                          {topic.joinedCount}人共创
-                        </div>
-                      ) : (
-                        <div className="absolute top-2 right-2 bg-[#fff1dc] px-2 py-0.5 rounded text-[8px] font-black uppercase text-[#b4834a]">
-                          待成圈
-                        </div>
-                      )}
-                   </div>
-                   <div className="space-y-1">
-                     <h4 className="text-sm font-bold line-clamp-2 leading-tight text-[#2f261d]">{topic.title}</h4>
-                     {topic.status !== 'completed' && (
-                       <p className="text-[9px] font-black text-[#b4834a] uppercase tracking-tight">
-                         还需 {topic.targetCount - topic.joinedCount} 人成圈
-                       </p>
-                     )}
-                     <div className="flex items-center justify-between pt-1">
-                         <div
-                           className="flex items-center gap-1 cursor-pointer"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                           }}
-                         >
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.creator}`} alt="" className="w-4 h-4 rounded-full bg-[#f1e8dc] object-cover" />
-                            <span className="text-[10px] text-[#8f7f6d]">@{topic.creator}</span>
-                         </div>
-                        {topic.status === 'completed' ? (
-                          <div className="flex items-center gap-1 text-[10px] text-[#8f7f6d]">
-                            <Heart size={10} className="fill-gold stroke-none" /> {topic.likes}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-[10px] text-[#b4834a] font-black italic">
-                            <Users size={10} className="fill-gold stroke-none" /> {topic.joinedCount}/{topic.targetCount}
-                          </div>
-                        )}
-                     </div>
-                   </div>
-                </motion.div>
-             ))}
-          </div>
-        )}
-      </main>
-
-      <footer className="p-6 pt-0 bg-dark/80 backdrop-blur-md border-t border-white/[0.03]">
-         <button onClick={() => setScreen('home')} className="w-full h-14 bg-white text-dark rounded-[18px] font-black uppercase text-xs shadow-2xl active:scale-95 transition-transform flex items-center justify-center">
-            去发现更多
-         </button>
-      </footer>
-    </div>
-  );
-};
-
-const LikedTopicsScreen = ({ setScreen, topics, likedTopicIds, setSelectedTopic }: {
-  setScreen: (s: Screen) => void,
-  topics: Topic[],
-  likedTopicIds: Set<string>,
-  setSelectedTopic: (t: Topic) => void
-}) => (
-  <TopicCollectionScreen
-    setScreen={setScreen}
-    topicsList={topics}
-    setSelectedTopic={setSelectedTopic}
-    topicIds={likedTopicIds}
-    title="我的喜欢"
-    emptyText="还没有喜欢过任何作品哦"
-    emptyIcon={<Heart size={32} />}
-  />
-);
-
-const SavedTopicsScreen = ({ setScreen, topics, savedTopicIds, setSelectedTopic }: {
-  setScreen: (s: Screen) => void,
-  topics: Topic[],
-  savedTopicIds: Set<string>,
-  setSelectedTopic: (t: Topic) => void
-}) => (
-  <TopicCollectionScreen
-    setScreen={setScreen}
-    topicsList={topics}
-    setSelectedTopic={setSelectedTopic}
-    topicIds={savedTopicIds}
-    title="我的收藏"
-    emptyText="还没有收藏过任何作品哦"
-    emptyIcon={<Bookmark size={32} />}
-  />
-);
-
-// --- My Works Screen ---
-
-const MyWorksScreen = ({ setScreen, topics, setSelectedTopic, userVlogs, setCircleIsMyWorkMode, setCircleInitialTopicId }: {
-  setScreen: (s: Screen) => void,
-  topics: Topic[],
-  setSelectedTopic: (t: Topic) => void,
-  userVlogs: UserVlog[],
-  setCircleIsMyWorkMode: (b: boolean) => void,
-  setCircleInitialTopicId: (id: string | undefined) => void
-}) => {
-  const [filter, setFilter] = useState('全部');
-  const [isVisibilityDrawerOpen, setIsVisibilityDrawerOpen] = useState(false);
-  const [editingWorkId, setEditingWorkId] = useState<string | null>(null);
-  const [workVisibilities, setWorkVisibilities] = useState<Record<string, Visibility>>({});
-  const [selectedFriendIds, setSelectedFriendIds] = useState<Set<string>>(new Set());
-
-  const filterOptions = ['全部', '我发起的', '参与共创', '待成圈'];
-
-  const staticWorks = [
-    { id: 'sw-1', type: '发起', status: '已成圈', title: '今天的城市声音', likes: '8.2k' },
-    { id: 'sw-2', type: '参与', status: '已成圈', title: '今天真实的早餐桌', likes: '12.8k' },
-    { id: 'sw-3', type: '参与', status: '待成圈', title: '下班后的三十分钟', likes: '5.4k' },
-    { id: 'sw-4', type: '发起', status: '待成圈', title: '深夜的一盏灯', likes: '2.9k' },
-    { id: 'sw-5', type: '参与', status: '已成圈', title: '早高峰的地铁窗', likes: '3.6k' },
-    { id: 'sw-6', type: '发起', status: '已成圈', title: '周末的桌面', likes: '4.1k' },
-  ];
-
-  const allWorks = [...userVlogs, ...staticWorks];
-
-  const getDisplayStatus = (work: { type: string; status: string }) => {
-    if (work.type === '发起') return '我发起的';
-    if (work.status === '待成圈') return '待成圈';
-    return '参与共创';
-  };
-
-  const filteredWorks = allWorks.filter((work) => {
-    if (filter === '全部') return true;
-    if (filter === '我发起的') return work.type === '发起';
-    if (filter === '参与共创') return work.type === '参与' && work.status === '已成圈';
-    if (filter === '待成圈') return work.status === '待成圈';
-    return true;
-  });
-
-  const getVisibility = (id: string) => workVisibilities[id] || 'public';
-
-  const handleSetVisibility = (v: Visibility) => {
-    if (editingWorkId) {
-      setWorkVisibilities(prev => ({ ...prev, [editingWorkId]: v }));
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_top,#fffaf4_0%,#f7f2ea_42%,#f2ebe1_100%)] text-[#2f261d]">
-      <header className="p-6 flex items-center justify-between z-20 sticky top-0 bg-[#f9f5ef]/90 backdrop-blur-xl border-b border-[#e8dfd2]">
-        <button onClick={() => setScreen('me')} className="w-10 h-10 rounded-xl flex items-center justify-center border border-[#e9dfd3] bg-white/82 text-[#4f3d2d] shadow-sm active:scale-95 transition-transform">
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">全部作品</h2>
-        <div className="w-10 h-10" />
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
-        <section className="px-5 pt-5 space-y-4">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {filterOptions.map(opt => (
-              <button
-                key={opt}
-                onClick={() => setFilter(opt)}
-                className={`px-4 py-2 rounded-full text-[10px] font-black transition-all whitespace-nowrap border ${
-                  filter === opt ? 'bg-[#2f261d] text-white border-[#2f261d] shadow-sm' : 'bg-white/82 text-[#8f7f6d] border-[#eadfce]'
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5 mt-2">
-              {filteredWorks.map((work, i) => {
-                const topic = topics.find(t => t.id === (work as any).topicId) || topics[i % topics.length];
-                const visibility = getVisibility(work.id);
-                const isPending = work.status !== '已成圈';
-
-                return (
-                  <motion.div
-                    key={work.id}
-                    whileHover={{ scale: 1.02 }}
-                    onClick={() => {
-                      setSelectedTopic(topic);
-                      if (work.status === '已成圈') {
-                        setCircleIsMyWorkMode(true);
-                        setCircleInitialTopicId(topic.id);
-                        setScreen('circle');
-                      } else {
-                        setScreen('topic-detail');
-                      }
-                    }}
-                    className="aspect-[3/4.1] rounded-[18px] bg-[#f6ede3] border border-[#eadfce] relative overflow-hidden group cursor-pointer shadow-[0_14px_28px_rgba(103,81,58,0.08)] active:scale-[0.98] transition-transform"
-                  >
-                  {topic.image ? (
-                    <img
-                      src={topic.image}
-                      alt={work.title}
-                      className={`absolute inset-0 h-full w-full object-cover transition-all ${isPending ? 'scale-105 blur-[6px]' : ''}`}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#eef3fb] via-[#fffaf4] to-[#eef8f1]" />
-                  )}
-                  <div className={`absolute inset-0 bg-gradient-to-t ${isPending ? 'from-black/75 via-black/30 to-black/5' : 'from-black/65 via-black/15 to-transparent'}`} />
-
-                  <div className="absolute top-2 right-2 z-10 flex gap-1">
-                     <button
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         setEditingWorkId(work.id);
-                         setIsVisibilityDrawerOpen(true);
-                       }}
-                       className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md border border-white/70 flex items-center justify-center text-[#4f3d2d] active:scale-90 transition-all shadow-sm"
-                     >
-                       {visibility === 'public' && <Globe size={14} />}
-                       {visibility === 'friends' && <Users2 size={14} />}
-                       {visibility === 'private' && <Lock size={14} />}
-                       {visibility === 'selected' && <UserIcon size={14} />}
-                     </button>
-                  </div>
-
-                  <div className="absolute inset-0 flex flex-col justify-end p-3">
-                    <span className="absolute left-2.5 top-2.5 rounded-full bg-white/90 px-2 py-1 text-[9px] font-black text-[#2f261d] shadow-sm">
-                      {getDisplayStatus(work)}
-                    </span>
-                    <div className="flex items-center justify-between mt-1">
-                      <div className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${work.type === '发起' ? 'bg-[#FE2C55]' : work.status === '已成圈' ? 'bg-green-400' : 'bg-gold'}`}></span>
-                        <span className="text-[9px] font-black text-white/70">{getDisplayStatus(work)}</span>
-                      </div>
-                      <p className="text-[10px] font-bold text-white/70">{work.likes}</p>
-                    </div>
-                    <p className="text-sm text-white font-black mt-1 leading-tight line-clamp-2">{work.title}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
-            {filteredWorks.length === 0 && (
-              <div className="col-span-2 py-20 text-center">
-                <p className="text-[#b0a08e] text-xs font-black uppercase tracking-widest">暂无相关作品</p>
-              </div>
-            )}
-          </div>
-        </section>
-      </main>
-
-      <VisibilitySelectorDrawer
-        isOpen={isVisibilityDrawerOpen}
-        onClose={() => setIsVisibilityDrawerOpen(false)}
-        visibility={editingWorkId ? getVisibility(editingWorkId) : 'public'}
-        setVisibility={handleSetVisibility}
-        selectedFriendIds={selectedFriendIds}
-        setSelectedFriendIds={setSelectedFriendIds}
+      <EmptyState
+        icon={<Home size={30} />}
+        title="This section is not defined yet"
+        body="The space is intentionally empty until the next version of this feature is decided."
       />
     </div>
   );
-};
+}
 
-// --- Create Circle Screen ---
-
-const CreateCircleScreen = ({ setScreen, setSelectedTopic, initialTopicInfo }: { setScreen: (s: Screen) => void, setSelectedTopic: (t: Topic) => void, initialTopicInfo?: Partial<Topic> }) => {
-  const [participants, setParticipants] = useState(initialTopicInfo?.targetCount || 8);
-  const [duration, setDuration] = useState(initialTopicInfo?.durationLimit || 5);
-  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private' | 'selected'>('public');
-  const [showSelector, setShowSelector] = useState(false);
-  const [selectedFriendIds, setSelectedFriendIds] = useState<Set<string>>(new Set());
-  const [topicTitle, setTopicTitle] = useState(initialTopicInfo?.title || '');
-  const [topicDescription, setTopicDescription] = useState(initialTopicInfo?.description || '');
-
-  const friends = [
-    { id: '1', name: '林野', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=128&h=128&fit=crop' },
-    { id: '2', name: 'Mia', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop' },
-    { id: '3', name: '周屿', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=128&h=128&fit=crop' },
-    { id: '4', name: '张震', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=128&h=128&fit=crop' },
-    { id: '5', name: '苏苏', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&h=128&fit=crop' },
-  ];
-
-  const toggleFriend = (id: string) => {
-    const next = new Set(selectedFriendIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedFriendIds(next);
-  };
-
-  const selectedFriendNames = friends
-    .filter(f => selectedFriendIds.has(f.id))
-    .map(f => f.name)
-    .join('、');
-
-  return (
-    <div className={`${lightPageRootPadded} relative overflow-hidden`}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('home')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d]">发起共创</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <main className="flex-1 p-6 space-y-8 overflow-y-auto no-scrollbar pb-10">
-        <div className="space-y-4">
-          <input
-            className={`w-full h-14 rounded-xl px-5 font-bold outline-none focus:border-[#FE2C55]/25 ${lightInputField}`}
-            placeholder="你需要大家做什么"
-            value={topicTitle}
-            onChange={(e) => setTopicTitle(e.target.value)}
-          />
-          <textarea
-            className={`w-full rounded-xl p-5 font-medium outline-none focus:border-[#FE2C55]/25 text-sm min-h-[120px] resize-none ${lightInputField}`}
-            placeholder="添加话题描述，让更多人加入共创..."
-            value={topicDescription}
-            onChange={(e) => setTopicDescription(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-4">
-          <label className="text-[10px] font-black uppercase text-[#b19f8d] tracking-widest ml-1">参与人数（2-12）</label>
-          <div className="grid grid-cols-4 gap-2">
-            {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
-              <button
-                key={num}
-                onClick={() => setParticipants(num)}
-                className={`h-12 rounded-xl font-black text-xs transition-all ${participants === num ? 'bg-[#FE2C55] text-white shadow-[0_12px_24px_rgba(254,44,85,0.18)]' : 'bg-white/82 text-[#8f7f6d] border border-[#eadfce]'}`}
-              >
-                {num} 人
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <label className="text-[10px] font-black uppercase text-[#b19f8d] tracking-widest ml-1">作品时间限制 (3-10秒)</label>
-          <div className="flex items-center gap-4 p-4 rounded-xl border border-[#eadfce] bg-white/82 shadow-sm">
-             <span className="text-sm font-bold text-[#2f261d] w-8">{duration}s</span>
-             <input
-               type="range"
-               min="3"
-               max="10"
-               value={duration}
-               onChange={(e) => setDuration(parseInt(e.target.value))}
-               className="flex-1 h-1 rounded-full appearance-none cursor-pointer accent-[#FE2C55] bg-[#eadfce]"
-             />
-             <div className="flex gap-1">
-                {[3, 5, 8, 10].map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setDuration(v)}
-                    className={`px-2 py-1 rounded-lg text-[8px] font-black tracking-tighter ${duration === v ? 'bg-[#FE2C55] text-white' : 'bg-[#f6ede3] text-[#8f7f6d]'}`}
-                  >
-                    {v}S
-                  </button>
-                ))}
-             </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <label className="text-[10px] font-black uppercase text-[#b19f8d] tracking-widest ml-1">可见范围</label>
-          <div
-            onClick={() => setShowSelector(true)}
-            className={`p-6 flex items-center justify-between active:bg-[#fbf6ef] transition-all group ${lightSurfaceCard}`}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#f6ede3] flex items-center justify-center text-[#8f7f6d] group-active:text-[#FE2C55] transition-colors">
-                {visibility === 'public' && <Globe size={20} />}
-                {visibility === 'friends' && <Users2 size={20} />}
-                {visibility === 'private' && <Lock size={20} />}
-                {visibility === 'selected' && <UserIcon size={20} />}
-              </div>
-              <div>
-                <p className="text-sm font-black text-[#2f261d] tracking-wide">谁可以看</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-[10px] text-[#b4834a] font-bold uppercase tracking-widest">
-                    {visibility === 'public' && '公开'}
-                    {visibility === 'friends' && '朋友'}
-                    {visibility === 'private' && '私密'}
-                    {visibility === 'selected' && '部分可见'}
-                  </p>
-                  {visibility === 'selected' && selectedFriendIds.size > 0 && (
-                    <span className="text-[9px] text-[#aa9a86] font-medium">({selectedFriendNames.length > 15 ? selectedFriendNames.slice(0, 15) + '...' : selectedFriendNames})</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <ChevronRight size={18} className="text-[#c0b09d]" />
-          </div>
-        </div>
-
-      </main>
-
-      <footer className="p-6 pb-10 bg-[#f9f5ef]/90 backdrop-blur-md border-t border-[#e8dfd2]">
-        <p className="text-[10px] text-[#8f7f6d] text-center font-medium mb-4">
-            创建话题后，该话题产生的收益，将由所有同圈的创作者平分。
-        </p>
-        <button
-          onClick={() => {
-            // Mock a "created" topic
-            const newTopic: Topic = {
-              id: 'new-' + Date.now(),
-              title: topicTitle || '未命名共创',
-              description: '由你发起的新共创话题。',
-              prompt: '捕捉你眼前的时刻',
-              city: '上海',
-              creator: CURRENT_USER.name,
-              joinedCount: 1,
-              targetCount: participants,
-              deadline: '23h 59m',
-              status: 'forming',
-              tone: 'amber',
-              mode: 'Video',
-              likes: '0',
-            };
-            setSelectedTopic(newTopic);
-            setScreen('topic-detail');
-          }}
-          className="w-full h-14 bg-[#FE2C55] text-white rounded-full font-black uppercase text-xs shadow-[0_18px_40px_rgba(254,44,85,0.22)] active:scale-95 transition-transform flex items-center justify-center"
-        >
-          发起召集
-        </button>
-      </footer>
-
-      <VisibilitySelectorDrawer
-        isOpen={showSelector}
-        onClose={() => setShowSelector(false)}
-        visibility={visibility}
-        setVisibility={setVisibility}
-        selectedFriendIds={selectedFriendIds}
-        setSelectedFriendIds={setSelectedFriendIds}
-      />
-    </div>
-  );
-};
-
-const CreateSuccessScreen = ({ setScreen, showToast }: { setScreen: (s: Screen) => void, showToast: (m: string) => void }) => {
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-
-  return (
-    <div className="flex flex-col h-full bg-dark items-center justify-center p-10 text-center space-y-8">
-      <div className="relative">
-         <div className="w-32 h-32 bg-emerald-500 rounded-[28px] flex items-center justify-center shadow-[0_0_80px_rgba(16,185,129,0.2)]">
-            <Check size={64} className="text-white" strokeWidth={3} />
-         </div>
-      </div>
-      <div className="space-y-3">
-        <h2 className="text-3xl font-bold">主题已发布!</h2>
-        <p className="text-white/40 text-sm leading-relaxed max-w-[240px]">你的共创邀请已同步至好友动态。快去拍摄你的第一帧吧。</p>
-      </div>
-      <div className="w-full space-y-3">
-        <button onClick={() => setScreen('topic-detail')} className="w-full h-14 bg-white text-dark rounded-full font-black uppercase text-xs shadow-2xl active:scale-95 transition-transform">
-          完成并返回
-        </button>
-        <button onClick={() => setIsInviteModalOpen(true)} className="w-full h-14 bg-white/10 backdrop-blur-xl rounded-full font-black uppercase text-xs active:scale-95 transition-transform border border-white/10 text-white/60">
-          邀请好友加速成圈
-        </button>
-      </div>
-
-      <AnimatePresence>
-        <FriendSelectionModal
-          isOpen={isInviteModalOpen}
-          onClose={() => setIsInviteModalOpen(false)}
-          remainingCount={10}
-          onInvite={(friends) => {
-            showToast(`已向 ${friends.length} 位好友发送邀请`);
-            setIsInviteModalOpen(false);
-          }}
-        />
-      </AnimatePresence>
-    </div>
-  );
-};
-
-const hotTopicOptions = [
-  { tag: '#日常瞬间', heat: '128.4万浏览', desc: '记录今天发生的小事' },
-  { tag: '#城市生活', heat: '96.8万浏览', desc: '街角、通勤、晚风和灯' },
-  { tag: '#DR圈', heat: '72.1万浏览', desc: '正在被朋友们共创的内容' },
-  { tag: '#今天吃什么', heat: '61.3万浏览', desc: '早餐、咖啡、深夜食堂' },
-  { tag: '#深圳周末', heat: '45.7万浏览', desc: '附近正在发生的新鲜事' },
-  { tag: '#下班后的三十分钟', heat: '38.9万浏览', desc: '把生活还给自己的片刻' },
-];
-
-const HotTopicDrawer = ({
-  isOpen,
-  onClose,
-  onSelect,
-}: {
-  isOpen: boolean,
-  onClose: () => void,
-  onSelect: (tag: string) => void,
-}) => (
-  <AnimatePresence>
-    {isOpen && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 z-[140] flex flex-col justify-end bg-black/35 backdrop-blur-[2px]"
-      >
-        <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-          onClick={(event) => event.stopPropagation()}
-          className="max-h-[72%] overflow-hidden rounded-t-[26px] bg-white text-[#2f261d] shadow-[0_-18px_50px_rgba(47,38,29,0.18)]"
-        >
-          <div className="sticky top-0 z-10 border-b border-[#eee4d8] bg-white px-5 pb-3 pt-4">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#e3d7ca]" />
-            <div className="flex items-center justify-between">
-              <h3 className="text-[18px] font-black">热门话题</h3>
-              <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f1e9] text-[#8f7f6d] active:scale-95 transition-transform" aria-label="关闭">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-          <div className="max-h-[460px] overflow-y-auto px-5 pb-8 no-scrollbar">
-            {hotTopicOptions.map((item, index) => (
-              <button
-                key={item.tag}
-                onClick={() => onSelect(item.tag)}
-                className="flex w-full items-center gap-3 border-b border-[#f1e8dc] py-4 text-left active:bg-[#fbf6ef]"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff0f3] text-[13px] font-black text-[#FE2C55]">
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-black">{item.tag}</span>
-                  <span className="mt-0.5 block truncate text-[11px] font-bold text-[#9b8a79]">{item.desc}</span>
-                </span>
-                <span className="text-[11px] font-black text-[#c0b09d]">{item.heat}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
-const locationOptions = [
-  { name: '深圳万象天地', type: '商场', address: '南山区粤海街道大冲社区深南大道 9668 号', distance: '135m' },
-  { name: 'HAUS NOWHERE(深圳)', type: '商场', address: '南山区深南大道 9668 号深圳万象天地', distance: '294m' },
-  { name: '金牌陶陶居(万象天地店)', type: '美食', address: '南山区华润万象天地 C 座 SL186', distance: '38m' },
-  { name: '华为旗舰店·深圳万象天地', type: '数码产品', address: '南山区粤海街道深南大道 9668 号', distance: '106m' },
-  { name: '庆春朴门(万象天地店)', type: '素食', address: '南山区华润万象天地北区里巷 3 层', distance: '210m' },
-  { name: '隐厨·中国菜馆(深圳万象天地店)', type: '湘菜', address: '南山区科润路 9668 号', distance: '204m' },
-  { name: '优衣库(深圳万象天地店)', type: '服装', address: '南山区粤海街道深南大道 9668 号', distance: '85m' },
-];
-
-const LocationDrawer = ({
-  isOpen,
-  onClose,
-  selected,
-  onSelect,
-}: {
-  isOpen: boolean,
-  onClose: () => void,
-  selected: string,
-  onSelect: (name: string) => void,
-}) => (
-  <AnimatePresence>
-    {isOpen && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 z-[140] flex flex-col justify-end bg-black/35 backdrop-blur-[2px]"
-      >
-        <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-          onClick={(event) => event.stopPropagation()}
-          className="max-h-[78%] overflow-hidden rounded-t-[26px] bg-white text-[#2f261d] shadow-[0_-18px_50px_rgba(47,38,29,0.18)]"
-        >
-          <div className="sticky top-0 z-10 border-b border-[#eee4d8] bg-white px-5 pb-3 pt-4">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#e3d7ca]" />
-            <div className="flex items-center justify-between">
-              <h3 className="text-[18px] font-black">添加地点</h3>
-              <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f1e9] text-[#8f7f6d] active:scale-95 transition-transform" aria-label="关闭">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="mt-5 flex h-11 items-center overflow-hidden rounded-full bg-[#f6f1ea] text-[14px] font-bold text-[#2f261d]">
-              <span className="flex h-full items-center gap-1 border-r border-[#e2d8cc] px-4">深圳 <ChevronDown size={14} /></span>
-              <span className="px-4 text-[#b6a695]">搜索地点</span>
-            </div>
-          </div>
-          <div className="max-h-[500px] overflow-y-auto px-5 pb-24 no-scrollbar">
-            {locationOptions.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => onSelect(item.name)}
-                className="flex w-full items-center gap-3 border-b border-[#f1e8dc] py-4 text-left active:bg-[#fbf6ef]"
-              >
-                <span className={`h-6 w-6 shrink-0 rounded-full border-2 ${selected === item.name ? 'border-[#FE2C55] bg-[#FE2C55]' : 'border-[#d8ccbf]'}`} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[16px] font-black">{item.name}</span>
-                  <span className="mt-1 block truncate text-[12px] font-bold text-[#9b8a79]">{item.type} | {item.address}</span>
-                </span>
-                <span className="text-[12px] font-black text-[#b6a695]">{item.distance}</span>
-              </button>
-            ))}
-          </div>
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white to-white/0 px-16 pb-8 pt-8">
-            <button
-              onClick={onClose}
-              className="h-14 w-full rounded-full bg-[#FE2C55] text-[15px] font-black text-white shadow-[0_16px_30px_rgba(254,44,85,0.22)] active:scale-95 transition-transform"
-            >
-              完成
-            </button>
-          </div>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
-const visibilityOptions = [
-  { key: 'public', label: '公开可见', icon: Unlock },
-  { key: 'friends', label: '仅互关好友可见', icon: Users2 },
-  { key: 'private', label: '仅自己可见', icon: Lock },
-] as const;
-type VisibilityMode = typeof visibilityOptions[number]['key'];
-type VisibilityCustomMode = 'allow' | 'deny';
-const visibilityPeopleGroups = {
-  friends: ['林野', 'Mia', '周屿', '南川'],
-  followers: ['Echo', '阿泽', '小北', '苏苏'],
-  following: ['张震', 'Dear', 'Ann', 'Lucas'],
-};
-
-const VisibilityDrawer = ({
-  isOpen,
-  onClose,
-  visibility,
-  setVisibility,
-  allowList,
-  denyList,
-  setAllowList,
-  setDenyList,
-}: {
-  isOpen: boolean,
-  onClose: () => void,
-  visibility: VisibilityMode,
-  setVisibility: (mode: VisibilityMode) => void,
-  allowList: Set<string>,
-  denyList: Set<string>,
-  setAllowList: React.Dispatch<React.SetStateAction<Set<string>>>,
-  setDenyList: React.Dispatch<React.SetStateAction<Set<string>>>,
-}) => {
-  const [customMode, setCustomMode] = useState<VisibilityCustomMode | null>(null);
-  const [group, setGroup] = useState<'friends' | 'followers' | 'following'>('friends');
-
-  useEffect(() => {
-    if (!isOpen) {
-      setCustomMode(null);
-      setGroup('friends');
-    }
-  }, [isOpen]);
-
-  const activeList = customMode === 'allow' ? allowList : denyList;
-  const setActiveList = customMode === 'allow' ? setAllowList : setDenyList;
-
-  const togglePerson = (name: string) => {
-    setActiveList(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 z-[145] flex flex-col justify-end bg-black/35 backdrop-blur-[2px]"
-        >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-[78%] overflow-hidden rounded-t-[26px] bg-[#f7f7f7] text-[#2f261d] shadow-[0_-18px_50px_rgba(47,38,29,0.18)]"
-          >
-            <div className="px-4 pb-6 pt-4">
-              <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-[#cfcfcf]" />
-              {customMode ? (
-                <>
-                  <div className="mb-4 flex items-center justify-between">
-                    <button onClick={() => setCustomMode(null)} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#8f7f6d] shadow-sm active:scale-95 transition-transform" aria-label="返回">
-                      <ArrowLeft size={18} />
-                    </button>
-                    <h3 className="text-[17px] font-black">{customMode === 'allow' ? '只给谁看' : '不给谁看'}</h3>
-                    <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#8f7f6d] shadow-sm active:scale-95 transition-transform" aria-label="关闭">
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <div className="mb-3 grid grid-cols-3 gap-2 rounded-[18px] bg-white p-2 shadow-sm">
-                    {[
-                      ['friends', '好友'],
-                      ['followers', '粉丝'],
-                      ['following', '关注'],
-                    ].map(([key, label]) => (
-                      <button
-                        key={key}
-                        onClick={() => setGroup(key as typeof group)}
-                        className={`h-10 rounded-[14px] text-[12px] font-black ${group === key ? 'bg-[#2f261d] text-white' : 'bg-[#f6f1ea] text-[#8f7f6d]'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="max-h-[380px] overflow-y-auto rounded-[18px] bg-white px-4 shadow-sm no-scrollbar">
-                    {visibilityPeopleGroups[group].map((name) => (
-                      <button key={name} onClick={() => togglePerson(name)} className="flex w-full items-center gap-3 border-b border-[#f1e8dc] py-4 text-left last:border-b-0">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-10 w-10 rounded-full bg-[#f6ede3]" />
-                        <span className="flex-1 text-[15px] font-black">{name}</span>
-                        <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${activeList.has(name) ? 'border-[#FE2C55] bg-[#FE2C55] text-white' : 'border-[#d8ccbf]'}`}>
-                          {activeList.has(name) && <Check size={14} strokeWidth={4} />}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={onClose} className="mt-4 h-[52px] w-full rounded-full bg-[#FE2C55] text-[14px] font-black text-white shadow-[0_16px_30px_rgba(254,44,85,0.22)] active:scale-95 transition-transform">
-                    完成
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="overflow-hidden rounded-[18px] bg-white shadow-sm">
-                    {visibilityOptions.map((item) => (
-                      <button
-                        key={item.key}
-                        onClick={() => setVisibility(item.key)}
-                        className="flex h-[74px] w-full items-center gap-5 border-b border-[#efefef] px-5 text-left last:border-b-0 active:bg-[#fbf6ef]"
-                      >
-                        <item.icon size={24} className="text-[#2f261d]" />
-                        <span className="flex-1 text-[20px] font-black">{item.label}</span>
-                        {visibility === item.key && <Check size={24} className="text-[#FE2C55]" strokeWidth={3} />}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 overflow-hidden rounded-[18px] bg-white shadow-sm">
-                    <button onClick={() => setCustomMode('allow')} className="flex h-[74px] w-full items-center gap-5 border-b border-[#efefef] px-5 text-left active:bg-[#fbf6ef]">
-                      <Users2 size={24} className="text-[#2f261d]" />
-                      <span className="flex-1 text-[20px] font-black">只给谁看</span>
-                      <span className="text-[12px] font-black text-[#b6a695]">{allowList.size ? `${allowList.size}人` : ''}</span>
-                      <ChevronRight size={22} className="text-[#9b8a79]" />
-                    </button>
-                    <button onClick={() => setCustomMode('deny')} className="flex h-[74px] w-full items-center gap-5 px-5 text-left active:bg-[#fbf6ef]">
-                      <Users2 size={24} className="text-[#2f261d]" />
-                      <span className="flex-1 text-[20px] font-black">不给谁看</span>
-                      <span className="text-[12px] font-black text-[#b6a695]">{denyList.size ? `${denyList.size}人` : ''}</span>
-                      <ChevronRight size={22} className="text-[#9b8a79]" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const AlbumComposer = ({
+function ProfileScreen({
+  profile,
+  setProfile,
   setScreen,
   showToast,
-  source,
-  topic,
-  prevScreen,
 }: {
-  setScreen: (s: Screen) => void,
-  showToast: (m: string) => void,
-  source: 'create' | 'join',
-  topic?: Topic,
-  prevScreen: Screen,
-}) => {
-  const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
-  const [selectedPreviews, setSelectedPreviews] = useState<string[]>([]);
-  const [caption, setCaption] = useState('');
-  const [step, setStep] = useState<'album' | 'edit'>('album');
-  const [isTopicDrawerOpen, setIsTopicDrawerOpen] = useState(false);
-  const [isLocationDrawerOpen, setIsLocationDrawerOpen] = useState(false);
-  const [isVisibilityDrawerOpen, setIsVisibilityDrawerOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [visibility, setVisibility] = useState<VisibilityMode>('public');
-  const [allowList, setAllowList] = useState<Set<string>>(new Set());
-  const [denyList, setDenyList] = useState<Set<string>>(new Set());
-  const albumSamples = dailyLifeFrames.slice(0, 12);
-  const visibilityLabel = visibility === 'public' ? '公开可见' : visibility === 'friends' ? '互关好友可见' : '仅自己可见';
+  profile: User;
+  setProfile: (profile: User) => void;
+  setScreen: (screen: Screen) => void;
+  showToast: (message: string) => void;
+}) {
+  const [draft, setDraft] = useState(profile);
 
-  const handlePick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (loadEvent) => {
-      const preview = String(loadEvent.target?.result || '');
-      setSelectedPreview(preview);
-      setSelectedPreviews(prev => prev.includes(preview) ? prev : [...prev, preview].slice(0, 9));
-      showToast('已从相册选择');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const selectSample = (image: string) => {
-    setSelectedPreview(image);
-    setSelectedPreviews(prev => (
-      prev.includes(image)
-        ? prev.filter(item => item !== image)
-        : [...prev, image].slice(0, 9)
-    ));
-  };
-
-  const goBack = () => {
-    if (step === 'edit') {
-      setStep('album');
-      return;
-    }
-    setScreen(source === 'join' ? 'join' : prevScreen || 'home');
+  const save = () => {
+    setProfile(draft);
+    showToast('Profile saved');
+    setScreen('me');
   };
 
   return (
-    <main className="relative flex-1 overflow-y-auto bg-[#f9f5ef] px-5 pb-10 pt-28 text-[#2f261d] no-scrollbar">
-      <button
-        onClick={goBack}
-        className="absolute left-5 top-12 z-20 flex h-10 w-10 items-center justify-center rounded-xl border border-[#eadfce] bg-white/90 text-[#2f261d] shadow-sm active:scale-95 transition-transform"
-        aria-label="返回"
-      >
-        {step === 'album' ? <X size={20} /> : <ArrowLeft size={20} />}
-      </button>
-      <div className="absolute inset-x-0 top-12 z-10 flex justify-center pointer-events-none">
-        <div className="rounded-full bg-white/80 px-4 py-2 text-[12px] font-black shadow-sm">
-          {step === 'album' ? '最近项目' : '发布动态'}
-        </div>
-      </div>
+    <div className={pageRoot}>
+      <header className={headerRoot}>
+        <button onClick={() => setScreen('me')} className={iconButton} aria-label="Back">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-lg font-black">Profile</h1>
+        <button onClick={save} className={primaryButton}>
+          Save
+        </button>
+      </header>
 
-      {step === 'album' ? (
-        <div className="mx-auto flex max-w-[360px] flex-col gap-3 pb-24">
-          <div className="grid grid-cols-3 gap-1">
-            {albumSamples.map((image, index) => (
-              <button
-                key={image}
-                onClick={() => selectSample(image)}
-                className="relative aspect-square overflow-hidden bg-[#eadfce] active:scale-[0.98] transition-transform"
-              >
-                <img src={image} alt="" className="h-full w-full object-cover" />
-                {selectedPreviews.includes(image) && (
-                  <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#FE2C55] text-[10px] font-black text-white shadow-sm">
-                    {selectedPreviews.indexOf(image) + 1}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="absolute inset-x-0 bottom-0 z-20 border-t border-[#eadfce] bg-[#f9f5ef]/92 px-5 pb-8 pt-4 backdrop-blur-xl">
-            <button
-              onClick={() => {
-                if (selectedPreviews.length === 0) {
-                  showToast('请选择一张照片');
-                  return;
-                }
-                setStep('edit');
-              }}
-              className={`mx-auto flex h-12 w-full max-w-[360px] items-center justify-center rounded-full text-[13px] font-black shadow-sm active:scale-95 transition-all ${
-                selectedPreviews.length > 0
-                  ? 'bg-[#FE2C55] text-white shadow-[0_12px_24px_rgba(254,44,85,0.2)]'
-                  : 'bg-white/82 text-[#c0b09d]'
-              }`}
-            >
-              下一步
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="mx-auto flex max-w-[360px] flex-col gap-4">
-          <div className="rounded-[18px] border border-[#eadfce] bg-white p-4 shadow-sm">
-            <div className="flex gap-3 overflow-x-auto no-scrollbar">
-              {selectedPreviews.map((preview, index) => (
-                <button
-                  key={preview}
-                  onClick={() => setSelectedPreview(preview)}
-                  className={`relative h-[92px] w-[92px] shrink-0 overflow-hidden rounded-[18px] border-2 bg-[#f7f1e9] active:scale-95 transition-transform ${
-                    selectedPreview === preview ? 'border-[#FE2C55]' : 'border-transparent'
-                  }`}
-                >
-                  <img src={preview} alt="" className="h-full w-full object-cover" />
-                  <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#FE2C55] text-[10px] font-black text-white shadow-sm">
-                    {index + 1}
-                  </span>
-                </button>
-              ))}
-              <button
-                onClick={() => setStep('album')}
-                className="flex h-[92px] w-[92px] shrink-0 items-center justify-center rounded-[18px] border border-[#eadfce] bg-[#f8f4ed] text-[#c0b09d] active:scale-95 transition-transform"
-                aria-label="继续添加"
-              >
-                <Plus size={34} strokeWidth={1.8} />
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-[18px] border border-[#eadfce] bg-white p-4 shadow-sm">
+      <main className="flex-1 overflow-y-auto px-5 py-6 no-scrollbar">
+        <section className="space-y-4 rounded-[24px] bg-white p-5 shadow-sm">
+          <label className="block space-y-2">
+            <span className="text-[11px] font-black uppercase tracking-widest text-[#9b8a79]">Name</span>
+            <input
+              value={draft.name}
+              onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+              className="h-12 w-full rounded-xl bg-[#f8f1e8] px-4 text-sm font-bold outline-none"
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-[11px] font-black uppercase tracking-widest text-[#9b8a79]">Handle</span>
+            <input
+              value={draft.handle}
+              onChange={(event) => setDraft((prev) => ({ ...prev, handle: event.target.value.replace(/^@/, '') }))}
+              className="h-12 w-full rounded-xl bg-[#f8f1e8] px-4 text-sm font-bold outline-none"
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-[11px] font-black uppercase tracking-widest text-[#9b8a79]">Bio</span>
             <textarea
-              value={caption}
-              onChange={(event) => setCaption(event.target.value.slice(0, 180))}
-              placeholder={topic ? `回应：${topic.prompt}` : '分享你的想法、地点、心情...'}
-              className="h-40 w-full resize-none bg-transparent text-[15px] font-bold leading-7 text-[#4f3d2d] outline-none placeholder:text-[#c2b2a1]"
+              value={draft.bio}
+              onChange={(event) => setDraft((prev) => ({ ...prev, bio: event.target.value }))}
+              className="min-h-[112px] w-full resize-none rounded-xl bg-[#f8f1e8] px-4 py-3 text-sm font-bold leading-relaxed outline-none"
             />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {['#日常瞬间', '#城市生活', topic ? `#${topic.prompt}` : '#DR圈'].map(tag => (
-                <button key={tag} onClick={() => setCaption(prev => `${prev}${prev ? ' ' : ''}${tag}`)} className="rounded-full bg-[#f7f1e9] px-3 py-1.5 text-[11px] font-black text-[#8f7f6d] active:scale-95 transition-transform">
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setIsLocationDrawerOpen(true)} className="flex h-12 items-center justify-center gap-2 rounded-[14px] bg-white px-3 text-[12px] font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">
-              <MapPin size={15} /> <span className="truncate">{selectedLocation || '添加地点'}</span>
-            </button>
-            <button onClick={() => setIsTopicDrawerOpen(true)} className="flex h-12 items-center justify-center gap-2 rounded-[14px] bg-white text-[12px] font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">
-              <Hash size={15} /> 话题
-            </button>
-          </div>
-          <button onClick={() => setIsVisibilityDrawerOpen(true)} className="flex h-12 items-center justify-between rounded-[14px] bg-white px-4 text-[12px] font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">
-            <span className="flex items-center gap-2"><Lock size={15} /> 查看权限</span>
-            <span className="flex items-center gap-1">{allowList.size ? `${allowList.size}人` : denyList.size ? `${denyList.size}人` : visibilityLabel}<ChevronRight size={15} /></span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (selectedPreviews.length === 0) {
-                showToast('请先从相册选择素材');
-                setStep('album');
-                return;
-              }
-              if (!caption.trim()) {
-                showToast('请写一句笔记内容');
-                return;
-              }
-              showToast('发布成功');
-              setScreen('home');
-            }}
-            className="h-14 rounded-full bg-[#FE2C55] text-[13px] font-black text-white shadow-[0_18px_34px_rgba(254,44,85,0.24)] active:scale-95 transition-transform"
-          >
-            发布
-          </button>
-          <HotTopicDrawer
-            isOpen={isTopicDrawerOpen}
-            onClose={() => setIsTopicDrawerOpen(false)}
-            onSelect={(tag) => {
-              setCaption(prev => `${prev}${prev ? ' ' : ''}${tag}`);
-              setIsTopicDrawerOpen(false);
-            }}
-          />
-          <LocationDrawer
-            isOpen={isLocationDrawerOpen}
-            onClose={() => setIsLocationDrawerOpen(false)}
-            selected={selectedLocation}
-            onSelect={(name) => setSelectedLocation(name)}
-          />
-          <VisibilityDrawer
-            isOpen={isVisibilityDrawerOpen}
-            onClose={() => setIsVisibilityDrawerOpen(false)}
-            visibility={visibility}
-            setVisibility={setVisibility}
-            allowList={allowList}
-            denyList={denyList}
-            setAllowList={setAllowList}
-            setDenyList={setDenyList}
-          />
-        </div>
-      )}
-    </main>
-  );
-};
-
-const TextComposerScreen = ({ setScreen, showToast }: { setScreen: (s: Screen) => void, showToast: (m: string) => void }) => {
-  const [body, setBody] = useState('');
-  const [publishText, setPublishText] = useState('');
-  const [step, setStep] = useState<'write' | 'background' | 'publish'>('write');
-  const [selectedBoard, setSelectedBoard] = useState(0);
-  const [isTopicDrawerOpen, setIsTopicDrawerOpen] = useState(false);
-  const [isLocationDrawerOpen, setIsLocationDrawerOpen] = useState(false);
-  const [isVisibilityDrawerOpen, setIsVisibilityDrawerOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [visibility, setVisibility] = useState<VisibilityMode>('public');
-  const [allowList, setAllowList] = useState<Set<string>>(new Set());
-  const [denyList, setDenyList] = useState<Set<string>>(new Set());
-  const boards = [
-    'bg-[linear-gradient(135deg,#fff7ed_0%,#fecdd3_52%,#fb7185_100%)] text-[#3a1f1f]',
-    'bg-[linear-gradient(135deg,#ecfeff_0%,#a7f3d0_48%,#22c55e_100%)] text-[#123226]',
-    'bg-[linear-gradient(135deg,#f8fafc_0%,#c7d2fe_52%,#6366f1_100%)] text-[#161a3a]',
-    'bg-[linear-gradient(135deg,#fffbeb_0%,#fde68a_46%,#f97316_100%)] text-[#3a2412]',
-    'bg-[#111827] text-white',
-    'bg-[linear-gradient(135deg,#faf5ff_0%,#e9d5ff_46%,#a855f7_100%)] text-[#2b173a]',
-  ];
-
-  const composedText = body.trim();
-  const visibilityLabel = visibility === 'public' ? '公开可见' : visibility === 'friends' ? '互关好友可见' : '仅自己可见';
-
-  return (
-    <main className="relative flex-1 overflow-y-auto bg-[#f9f5ef] px-5 pb-10 pt-28 text-[#2f261d] no-scrollbar">
-      <button
-        onClick={() => {
-          if (step === 'publish') {
-            setStep('background');
-            return;
-          }
-          if (step === 'background') {
-            setStep('write');
-            return;
-          }
-          setScreen('home');
-        }}
-        className="absolute left-5 top-12 z-20 flex h-10 w-10 items-center justify-center rounded-xl border border-[#eadfce] bg-white/90 text-[#2f261d] shadow-sm active:scale-95 transition-transform"
-        aria-label={step === 'write' ? '关闭' : '返回'}
-      >
-        {step === 'write' ? <X size={20} /> : <ArrowLeft size={20} />}
-      </button>
-      <div className="absolute inset-x-0 top-12 z-10 flex justify-center pointer-events-none">
-        <div className="rounded-full bg-white/80 px-4 py-2 text-[12px] font-black shadow-sm">
-          {step === 'write' ? '写想法' : step === 'background' ? '选择背景板' : '发布动态'}
-        </div>
-      </div>
-      {step === 'write' && (
-        <button
-          onClick={() => {
-            if (!body.trim()) {
-              showToast('请先写点内容');
-              return;
-            }
-            setStep('background');
-          }}
-          className="absolute right-5 top-12 z-20 flex h-10 items-center justify-center rounded-xl bg-[#FE2C55] px-4 text-[12px] font-black text-white shadow-[0_10px_20px_rgba(254,44,85,0.2)] active:scale-95 transition-transform"
-        >
-          下一步
-        </button>
-      )}
-
-      <div className="mx-auto flex max-w-[360px] flex-col gap-4">
-        {step === 'write' ? (
-          <>
-            <div className="rounded-[22px] border border-[#eadfce] bg-white p-5 shadow-sm">
-              <textarea
-                value={body}
-                onChange={(event) => setBody(event.target.value.slice(0, 220))}
-                placeholder="这一刻想说点什么..."
-                className="h-80 w-full resize-none bg-transparent text-[18px] font-black leading-8 text-[#4f3d2d] outline-none placeholder:text-[#c2b2a1]"
-              />
-            </div>
-          </>
-        ) : step === 'background' ? (
-          <>
-            <div className={`flex aspect-[4/5] flex-col items-center justify-center rounded-[24px] p-8 text-center shadow-sm ${boards[selectedBoard]}`}>
-              <p className="whitespace-pre-line text-[24px] font-black leading-snug drop-shadow-sm">
-                {composedText}
-              </p>
-            </div>
-
-            <div className="rounded-[18px] bg-white/82 p-4 shadow-sm">
-              <p className="mb-3 text-[12px] font-black">背景板</p>
-              <div className="grid grid-cols-6 gap-2">
-                {boards.map((board, index) => (
-                  <button
-                    key={board}
-                    onClick={() => setSelectedBoard(index)}
-                    className={`aspect-square rounded-[12px] border-2 ${board} ${selectedBoard === index ? 'border-[#FE2C55]' : 'border-white'}`}
-                    aria-label={`背景板 ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setStep('publish')}
-              className="h-14 rounded-full bg-[#FE2C55] text-[13px] font-black text-white shadow-[0_18px_34px_rgba(254,44,85,0.24)] active:scale-95 transition-transform"
-            >
-              下一步
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="rounded-[22px] border border-[#eadfce] bg-white p-4 shadow-sm">
-              <div className="flex gap-3">
-                <div className={`relative flex h-[96px] w-[96px] shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-2 border-[#FE2C55] p-3 text-center ${boards[selectedBoard]}`}>
-                  <p className="line-clamp-3 whitespace-pre-line text-[15px] font-black leading-tight">
-                    {composedText}
-                  </p>
-                  <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#FE2C55] text-[12px] font-black text-white shadow-sm">
-                    1
-                  </span>
-                </div>
-                <button
-                  onClick={() => setStep('background')}
-                  className="flex h-[96px] w-[96px] shrink-0 items-center justify-center rounded-[18px] border border-[#eadfce] bg-[#f8f4ed] text-[#c0b09d] active:scale-95 transition-transform"
-                  aria-label="添加"
-                >
-                  <Plus size={34} strokeWidth={1.8} />
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-[22px] border border-[#eadfce] bg-white p-5 shadow-sm">
-              <textarea
-                value={publishText}
-                onChange={(event) => setPublishText(event.target.value.slice(0, 180))}
-                placeholder="分享你的想法、地点、心情..."
-                className="h-52 w-full resize-none bg-transparent text-[16px] font-bold leading-7 text-[#4f3d2d] outline-none placeholder:text-[#c2b2a1]"
-              />
-              <div className="flex flex-wrap gap-2">
-                {['#日常瞬间', '#城市生活', '#DR圈'].map(tag => (
-                  <button key={tag} onClick={() => setPublishText(prev => `${prev}${prev ? ' ' : ''}${tag}`)} className="rounded-full bg-[#f7f1e9] px-3 py-1.5 text-[11px] font-black text-[#8f7f6d] active:scale-95 transition-transform">
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setIsLocationDrawerOpen(true)} className="flex h-14 items-center justify-center gap-2 rounded-[14px] bg-white px-3 text-[14px] font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">
-                <MapPin size={15} /> <span className="truncate">{selectedLocation || '添加地点'}</span>
-              </button>
-              <button onClick={() => setIsTopicDrawerOpen(true)} className="flex h-14 items-center justify-center gap-2 rounded-[14px] bg-white text-[14px] font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">
-                <Hash size={15} /> 话题
-              </button>
-            </div>
-            <button onClick={() => setIsVisibilityDrawerOpen(true)} className="flex h-14 items-center justify-between rounded-[14px] bg-white px-4 text-[14px] font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">
-              <span className="flex items-center gap-2"><Lock size={15} /> 查看权限</span>
-              <span className="flex items-center gap-1">{allowList.size ? `${allowList.size}人` : denyList.size ? `${denyList.size}人` : visibilityLabel}<ChevronRight size={15} /></span>
-            </button>
-
-            <button
-              onClick={() => {
-                showToast('文字笔记已发布');
-                setScreen('home');
-              }}
-              className="h-14 rounded-full bg-[#FE2C55] text-[13px] font-black text-white shadow-[0_18px_34px_rgba(254,44,85,0.24)] active:scale-95 transition-transform"
-            >
-              发布
-            </button>
-            <HotTopicDrawer
-              isOpen={isTopicDrawerOpen}
-              onClose={() => setIsTopicDrawerOpen(false)}
-              onSelect={(tag) => {
-                setPublishText(prev => `${prev}${prev ? ' ' : ''}${tag}`);
-                setIsTopicDrawerOpen(false);
-              }}
-            />
-            <LocationDrawer
-              isOpen={isLocationDrawerOpen}
-              onClose={() => setIsLocationDrawerOpen(false)}
-              selected={selectedLocation}
-              onSelect={(name) => setSelectedLocation(name)}
-            />
-            <VisibilityDrawer
-              isOpen={isVisibilityDrawerOpen}
-              onClose={() => setIsVisibilityDrawerOpen(false)}
-              visibility={visibility}
-              setVisibility={setVisibility}
-              allowList={allowList}
-              denyList={denyList}
-              setAllowList={setAllowList}
-              setDenyList={setDenyList}
-            />
-          </>
-        )}
-      </div>
-    </main>
-  );
-};
-
-const CreateAndShootScreen = ({ setScreen, showToast }: { setScreen: (s: Screen) => void, showToast: (m: string) => void }) => {
-  return (
-    <div className="flex flex-col h-full bg-black relative">
-       <div className="absolute inset-0 transition-colors duration-700 bg-[#111]">
-          <div className="w-full h-full flex flex-col items-center justify-center">
-             <Camera size={64} className="text-white/5" />
-             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="w-[85%] aspect-[3/4.5] border border-white/5 rounded-[34px] relative">
-                   <div className="absolute top-1/2 left-0 right-0 h-[0.5px] bg-white/5"></div>
-                   <div className="absolute top-0 bottom-0 left-1/2 w-[0.5px] bg-white/5"></div>
-                </div>
-             </div>
-          </div>
-       </div>
-
-       <div className="absolute inset-x-0 top-0 p-6 pt-12 flex items-center justify-between z-30">
-          <button
-            onClick={() => setScreen('topic-detail')}
-            className="w-10 h-10 glass-pill rounded-xl flex items-center justify-center"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="text-center">
-             <p className="text-[10px] font-black uppercase text-green-400 tracking-widest leading-none mb-1">
-               最后一步
-             </p>
-             <h3 className="text-sm font-bold truncate max-w-[180px] text-white">
-               正在捕捉
-             </h3>
-          </div>
-          <div className="w-10"></div>
-       </div>
-
-       <div className="absolute inset-x-0 bottom-0 p-8 pb-12 z-30 flex flex-col gap-6">
-          <div className="flex items-center justify-between px-4">
-             <button onClick={() => showToast('美颜模式已开启')} className="w-12 h-12 glass-pill rounded-full flex items-center justify-center text-white active:scale-95 transition-transform backdrop-blur-md">
-                <Sparkles size={22} />
-             </button>
-             <button
-               onClick={() => setScreen('video-edit')}
-               className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-95 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-             >
-                <div className="w-14 h-14 bg-white rounded-full"></div>
-             </button>
-             <button className="w-12 h-12 glass-pill rounded-full flex items-center justify-center text-white active:scale-95 transition-transform backdrop-blur-md">
-                <RotateCw size={22} />
-             </button>
-          </div>
-          <p className="text-center text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">
-            按下快门定格瞬间
-          </p>
-       </div>
+          </label>
+        </section>
+      </main>
     </div>
   );
-};
+}
 
-const JoinScreen = ({ topic, setScreen, showToast }: { topic: Topic, setScreen: (s: Screen) => void, showToast: (m: string) => void }) => {
-  const [showLandscapeHint, setShowLandscapeHint] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowLandscapeHint(false), 2600);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <div className="flex h-full flex-col bg-[#101010] text-white relative overflow-hidden">
-       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_84%,rgba(255,255,255,0.08),transparent_30%)]" />
-       <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-6 pt-10">
-          <button
-            onClick={() => setScreen('topic-detail')}
-            className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-white/12 bg-white/10 text-white backdrop-blur-md active:scale-95 transition-transform"
-            aria-label="返回话题详情"
-          >
-            <X size={28} />
-          </button>
-          <div className="w-14" />
-       </div>
-
-       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 pb-36 pt-28">
-          <div className="relative w-full aspect-[4/5.1] rounded-[34px] border border-white/10 bg-white/[0.018] shadow-[inset_0_0_46px_rgba(255,255,255,0.03)]">
-             <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-white/[0.07]" />
-             <div className="absolute left-10 right-10 top-1/2 h-px -translate-y-1/2 bg-white/[0.07]" />
-             <div className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[20px] border border-white/8 bg-black/10">
-               <Camera size={44} className="text-white/[0.12]" />
-             </div>
-             <div className="absolute -right-4 top-1/2 flex min-h-[112px] -translate-y-1/2 flex-col items-center justify-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-5 shadow-xl backdrop-blur-md">
-               {Array.from(topic.title).map((char, index) => (
-                 <span
-                   key={`${char}-${index}`}
-                   className="block rotate-90 text-[13px] font-black leading-none text-white/82"
-                 >
-                   {char}
-                 </span>
-               ))}
-             </div>
-          </div>
-       </div>
-
-       <div className="absolute inset-x-0 bottom-0 z-30 px-8 pb-12">
-          <div className="flex items-center justify-between">
-             <button onClick={() => showToast('美颜模式已开启')} className="flex h-16 w-16 items-center justify-center rounded-full border border-white/12 bg-white/10 text-white/86 active:scale-95 transition-transform">
-                <Sparkles size={23} />
-             </button>
-             <button
-               onClick={() => setScreen('video-edit')}
-               className="flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-white bg-black shadow-[0_0_64px_rgba(255,255,255,0.22)] active:scale-95 transition-transform"
-               aria-label="拍摄"
-             >
-                <div className="h-16 w-16 rounded-full bg-white" />
-             </button>
-             <button onClick={() => showToast('已切换至前置摄像头')} className="flex h-16 w-16 items-center justify-center rounded-full border border-white/12 bg-white/10 text-white/86 active:scale-95 transition-transform">
-                <RotateCw size={23} />
-             </button>
-          </div>
-          <p className="mt-8 text-center text-[14px] font-black tracking-[0.34em] text-white/28">点击开始拍摄</p>
-       </div>
-
-       <AnimatePresence>
-         {showLandscapeHint && (
-           <motion.div
-             initial={{ opacity: 0, y: 16 }}
-             animate={{ opacity: 1, y: 0 }}
-             exit={{ opacity: 0, y: -8 }}
-             className="absolute left-1/2 top-[150px] z-40 w-[270px] -translate-x-1/2 rounded-xl border border-white/14 bg-white/10 px-4 py-3 text-center shadow-2xl backdrop-blur-xl"
-           >
-             <p className="text-sm font-black text-white">请横屏拍摄</p>
-             <p className="mt-1 text-[10px] font-bold text-white/60">横向画面更适合合成 DR圈共创视频</p>
-           </motion.div>
-         )}
-       </AnimatePresence>
-    </div>
-  );
-};
-
-const JoinSuccessScreen = ({ setScreen, showToast }: { setScreen: (s: Screen) => void, showToast: (m: string) => void }) => {
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-
-  return (
-    <div className="flex flex-col h-full bg-dark p-10 pt-16">
-      <div className="flex-1 flex flex-col items-center justify-center space-y-10">
-        <div className="relative">
-           <motion.div
-             initial={{ scale: 0 }}
-             animate={{ scale: 1 }}
-             className="w-32 h-32 bg-white rounded-[28px] flex items-center justify-center shadow-[0_0_80px_rgba(255,255,255,0.2)]"
-           >
-             <ShieldCheck size={64} className="text-white" strokeWidth={2.5} />
-           </motion.div>
-           <motion.div
-             initial={{ opacity: 0, y: 20 }}
-             animate={{ opacity: 1, y: 0 }}
-             transition={{ delay: 0.3 }}
-             className="absolute -bottom-4 left-1/2 -translate-x-1/2 glass-pill px-4 py-1.5 rounded-full text-[10px] font-black text-gold tracking-widest uppercase whitespace-nowrap shadow-xl"
-           >
-             已获得真实标记
-           </motion.div>
-        </div>
-
-        <div className="space-y-4 text-center">
-          <h2 className="text-4xl font-bold">拍摄完成!</h2>
-          <p className="text-white/40 text-sm leading-relaxed max-w-[240px] mx-auto">
-            你已成功贡献了一份回忆。当共创组达成目标后，完整的合集将同步推送到你的广场。
-          </p>
-        </div>
-
-      </div>
-
-      <div className="w-full space-y-3 pb-6 shrink-0 mt-6">
-        <button onClick={() => setScreen('topic-detail')} className="w-full h-14 bg-white text-dark rounded-full font-black uppercase text-xs shadow-2xl active:scale-95 transition-transform">
-          完成并返回
-        </button>
-        <button onClick={() => setIsInviteModalOpen(true)} className="w-full h-14 bg-white/10 backdrop-blur-xl rounded-full font-black uppercase text-xs active:scale-95 transition-transform border border-white/10 text-white/60">
-          邀请好友拍摄
-        </button>
-      </div>
-
-      <AnimatePresence>
-        <FriendSelectionModal
-          isOpen={isInviteModalOpen}
-          onClose={() => setIsInviteModalOpen(false)}
-          remainingCount={10}
-          onInvite={(friends) => {
-            showToast(`已向 ${friends.length} 位好友发送邀请`);
-            setIsInviteModalOpen(false);
-          }}
-        />
-      </AnimatePresence>
-
-    </div>
-  );
-};
-
-// --- Circle (Discover) Screen ---
-
-const CircleScreen = ({
+function SettingsScreen({
   setScreen,
-  prevScreen,
-  topics,
-  setSelectedTopic,
-  setSelectedUserName,
-  savedTopicIds,
-  toggleFavorite,
-  likedTopicIds,
-  toggleLike,
-  spotlightTopicIds,
-  spotlightTopic,
-  showToast,
-  diamondBalance,
-  setDiamondBalance,
-  initialTopicId,
-  isMyWorkMode,
-  setCircleIsMyWorkMode,
-  setCircleInitialTopicId,
-  setCircleInitialTopicInfo,
-  isGiftDonorDetailModalOpen,
-  setIsGiftDonorDetailModalOpen,
-  setCirclePureMode,
-  setReportTargetName,
-  setReportType
 }: {
-  setScreen: (s: Screen) => void,
-  prevScreen: Screen,
-  topics: Topic[],
-  setSelectedTopic: (t: Topic) => void,
-  setSelectedUserName: (name: string) => void,
-  savedTopicIds: Set<string>,
-  toggleFavorite: (id: string) => void,
-  likedTopicIds: Set<string>,
-  toggleLike: (id: string) => void,
-  spotlightTopicIds: Set<string>,
-  spotlightTopic: (id: string) => void,
-  showToast: (m: string) => void,
-  diamondBalance: number,
-  setDiamondBalance: React.Dispatch<React.SetStateAction<number>>,
-  initialTopicId?: string,
-  isMyWorkMode?: boolean,
-  setCircleIsMyWorkMode: (b: boolean) => void,
-  setCircleInitialTopicId: (id: string | undefined) => void,
-  setCircleInitialTopicInfo: (info: Partial<Topic> | undefined) => void,
-  isGiftDonorDetailModalOpen: boolean,
-  setIsGiftDonorDetailModalOpen: (val: boolean) => void,
-  setCirclePureMode: (val: boolean) => void,
-  setReportTargetName: (name: string) => void,
-  setReportType: (type: 'account' | 'video') => void
-}) => {
-  const [activeTab, setActiveTab] = useState('推荐');
-  const [circleIndex, setCircleIndex] = useState(0);
-  const [isShareDrawerOpen, setIsShareDrawerOpen] = useState(false);
-  const [isMoreDrawerOpen, setIsMoreDrawerOpen] = useState(false);
-  const [isVisibilityDrawerOpen, setIsVisibilityDrawerOpen] = useState(false);
-  const [visibility, setVisibility] = useState<Visibility>('public');
-  const [selectedFriendIds, setSelectedFriendIds] = useState<Set<string>>(new Set());
-
-  const [sharingTopic, setSharingTopic] = useState<Topic | null>(null);
-  const [isGiftDrawerOpen, setIsGiftDrawerOpen] = useState(false);
-  const [selectedGiftName, setSelectedGiftName] = useState(GIFTS[0]?.name || '');
-  const [giftQuantity, setGiftQuantity] = useState(1);
-  const [isGiftersDrawerOpen, setIsGiftersDrawerOpen] = useState(false);
-  const [expandedCreatorsId, setExpandedCreatorsId] = useState<string | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isPureMode, setIsPureMode] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [longPressTimer, setLongPressTimer] = useState<any>(null);
-  const [isHeatingModalOpen, setIsHeatingModalOpen] = useState(false);
-  const [isGiftDonorModalOpen, setIsGiftDonorModalOpen] = useState(false);
-  const [selectedShareUserIds, setSelectedShareUserIds] = useState<Set<string>>(new Set());
-  const [showClearScreenHint, setShowClearScreenHint] = useState(true);
-  const gestureStartRef = useRef<{ x: number; y: number } | null>(null);
-  const ignoreNextClickRef = useRef(false);
-
-  useEffect(() => {
-    setCirclePureMode(isPureMode);
-    return () => setCirclePureMode(false);
-  }, [isPureMode, setCirclePureMode]);
-
-  const toggleShareUser = (id: string) => {
-    const next = new Set(selectedShareUserIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedShareUserIds(next);
-  };
-
-  const startLongPress = () => {
-    setLongPressTimer(setTimeout(() => {
-      setIsPureMode(prev => !prev);
-    }, 600));
-  };
-
-  const endLongPress = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  };
-
-  const startPointerGesture = (event: React.PointerEvent<HTMLElement>) => {
-    gestureStartRef.current = { x: event.clientX, y: event.clientY };
-    startLongPress();
-  };
-
-  const endPointerGesture = (event: React.PointerEvent<HTMLElement>) => {
-    endLongPress();
-
-    const start = gestureStartRef.current;
-    gestureStartRef.current = null;
-    if (!start) return;
-
-    const deltaX = event.clientX - start.x;
-    const deltaY = event.clientY - start.y;
-    if (deltaX > 72 && Math.abs(deltaY) < 64) {
-      ignoreNextClickRef.current = true;
-      setShowClearScreenHint(false);
-      if (!isPureMode) {
-        setIsPureMode(true);
-      }
-    }
-  };
-
-  const cancelPointerGesture = () => {
-    endLongPress();
-    gestureStartRef.current = null;
-  };
-
-  const handleShare = (topic: Topic) => {
-    setSharingTopic(topic);
-    setSelectedShareUserIds(new Set());
-    setIsShareDrawerOpen(true);
-  };
-
-  const selectedGift = GIFTS.find((gift) => gift.name === selectedGiftName) || GIFTS[0];
-  const giftTotalCost = selectedGift ? selectedGift.price * giftQuantity : 0;
-  const giftQuantityOptions = [1, 3, 5, 10];
-  const circleTabs = ['推荐', 'CP'];
-
-  const sendSelectedGift = () => {
-    if (!selectedGift) return;
-    if (giftTotalCost > diamondBalance) {
-      showToast('钻石不足，请先充值');
-      return;
-    }
-
-    setDiamondBalance((prev) => prev - giftTotalCost);
-    showToast(`已送出 ${giftQuantity} 个${selectedGift.name}`);
-    setIsGiftDrawerOpen(false);
-  };
-
-  const circleTopics = activeTab === 'CP'
-    ? topics.filter((_, index) => index % 2 === 0)
-    : topics;
-  const targetCircleTopic = initialTopicId ? circleTopics.find(t => t.id === initialTopicId) : undefined;
-  const circleFeedTopics = isMyWorkMode
-    ? circleTopics.filter(t => t.id === initialTopicId)
-    : targetCircleTopic
-      ? [targetCircleTopic, ...circleTopics.filter(t => t.id !== initialTopicId), ...circleTopics]
-      : [...circleTopics, ...circleTopics];
-  const circleCardTopics = circleTopics.filter(t => t.status !== 'completed');
-  const currentCircleTopic = circleCardTopics[circleIndex % circleCardTopics.length] || topics[0];
-  const circleIsFavorite = savedTopicIds.has(currentCircleTopic.id);
-  const nextCircleTopic = () => setCircleIndex((prev) => (prev + 1) % circleCardTopics.length);
-  const prevCircleTopic = () => setCircleIndex((prev) => (prev - 1 + circleCardTopics.length) % circleCardTopics.length);
-
+  setScreen: (screen: Screen) => void;
+}) {
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#f7f3ec] pt-8 font-sans text-[#2f261d]">
-      <header className="sticky top-0 z-30 bg-[#f7f3ec]/94 px-4 pb-3 pt-4 backdrop-blur-xl">
-        <div className="flex items-center gap-5">
-          {circleTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                setCircleIndex(0);
-              }}
-              className={`relative h-10 px-1 text-[16px] font-black transition-colors ${
-                activeTab === tab ? 'text-[#2f261d]' : 'text-[#9d8c7a]'
-              }`}
-            >
-              {tab}
-              {activeTab === tab && (
-                <motion.span
-                  layoutId="circleFeedTab"
-                  className="absolute bottom-0 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-[#FE2C55]"
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-hidden px-4 pb-32 pt-1">
-        <div className="relative h-full">
-          {[0, 1].map((stackIndex) => {
-            const topicIndex = (circleIndex + stackIndex + 1) % circleCardTopics.length;
-            const topic = circleCardTopics[topicIndex] || currentCircleTopic;
-            return (
-              <div
-                key={`light-circle-stack-${topic.id}-${stackIndex}`}
-                className="absolute inset-x-4 top-5 h-[560px] rounded-[24px] border border-[#eadfce] bg-white shadow-[0_12px_30px_rgba(103,81,58,0.08)]"
-                style={{
-                  opacity: 0.58 - stackIndex * 0.18,
-                  transform: `translateY(${18 + stackIndex * 16}px) scale(${0.96 - stackIndex * 0.035})`,
-                  zIndex: stackIndex,
-                }}
-              />
-            );
-          })}
-
-          <motion.article
-            key={currentCircleTopic.id}
-            initial={{ opacity: 0, y: 18, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            drag
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.22}
-            whileDrag={{ scale: 0.975, rotate: 1 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.x < -50 || info.velocity.x < -450 || info.offset.y < -50 || info.velocity.y < -450) {
-                nextCircleTopic();
-              } else if (info.offset.x > 50 || info.velocity.x > 450 || info.offset.y > 50 || info.velocity.y > 450) {
-                prevCircleTopic();
-              }
-            }}
-            onClick={() => {
-              setSelectedTopic(currentCircleTopic);
-              setScreen('topic-detail');
-            }}
-            className="relative z-20 h-[590px] overflow-hidden rounded-[24px] border border-[#eadfce] bg-white shadow-[0_20px_44px_rgba(103,81,58,0.14)] active:scale-[0.99] transition-transform"
-          >
-            <div className="relative h-[360px] overflow-hidden bg-black">
-              {currentCircleTopic.status === 'completed' ? (
-                <div className="grid h-full w-full grid-cols-2 grid-rows-4 gap-px bg-black">
-                  {Array.from({ length: 8 }).map((_, frameIndex) => {
-                    const seed = (circleIndex * 2 + frameIndex) % dailyLifeFrames.length;
-                    return (
-                      <div key={frameIndex} className="relative overflow-hidden">
-                        <img src={dailyLifeFrames[seed]} alt="" className="h-full w-full object-cover" />
-                        <div className="absolute inset-0 bg-black/16" />
-                        <p className="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-[12px] font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-                          {dailyLifeCaptions[seed]}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <>
-                  <img src={currentCircleTopic.image || dailyLifeFrames[circleIndex % dailyLifeFrames.length]} alt="" className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/8 to-black/12" />
-                </>
-              )}
-
-              <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    toggleFavorite(currentCircleTopic.id);
-                  }}
-                  className={`ml-auto flex h-10 w-10 items-center justify-center rounded-full border backdrop-blur-md active:scale-95 transition-transform ${
-                    circleIsFavorite ? 'border-[#d6b27e] bg-[#d6b27e] text-white' : 'border-white/24 bg-black/22 text-white'
-                  }`}
-                  aria-label={circleIsFavorite ? '取消收藏' : '收藏'}
-                >
-                  <Star size={18} className={circleIsFavorite ? 'fill-current' : ''} />
-                </button>
-              </div>
-
-              <div className="absolute left-5 right-5 bottom-5 text-white">
-                <h2 className="text-[30px] font-black leading-[0.98] drop-shadow-[0_3px_12px_rgba(0,0,0,0.58)]">{currentCircleTopic.title}</h2>
-              </div>
-
-            </div>
-
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                prevCircleTopic();
-              }}
-              className="absolute left-4 top-1/2 z-30 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/45 bg-white/62 text-[#2f261d] shadow-[0_10px_28px_rgba(47,38,29,0.18)] backdrop-blur-md active:scale-95 transition-transform"
-              aria-label="上一个话题"
-            >
-              <ChevronLeft size={19} />
-            </button>
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                nextCircleTopic();
-              }}
-              className="absolute right-4 top-1/2 z-30 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/45 bg-white/62 text-[#2f261d] shadow-[0_10px_28px_rgba(47,38,29,0.18)] backdrop-blur-md active:scale-95 transition-transform"
-              aria-label="下一个话题"
-            >
-              <ChevronRight size={19} />
-            </button>
-
-            <div className="space-y-5 px-5 py-5">
-              <p className="line-clamp-2 min-h-[42px] text-[14px] font-bold leading-relaxed text-[#5f5145]">
-                {currentCircleTopic.description}
-              </p>
-
-              <div className="rounded-[16px] bg-[#f7f3ec] p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-[#9b8a79]">共创进度</span>
-                  <span className="text-[11px] font-black text-[#b4834a]">
-                    {currentCircleTopic.joinedCount}/{currentCircleTopic.targetCount}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[#eadfce]">
-                  <div
-                    className="h-full rounded-full bg-[#FE2C55]"
-                    style={{ width: `${Math.min(100, (currentCircleTopic.joinedCount / currentCircleTopic.targetCount) * 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <div className="flex min-w-0 items-center">
-                    {Array.from({ length: Math.min(6, currentCircleTopic.joinedCount) }).map((_, avatarIndex) => (
-                      <img
-                        key={`${currentCircleTopic.id}-creator-${avatarIndex}`}
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentCircleTopic.id}-${avatarIndex}`}
-                        alt=""
-                        className={`h-8 w-8 shrink-0 rounded-full border-2 border-white bg-[#f6ede3] ${avatarIndex > 0 ? '-ml-2' : ''}`}
-                      />
-                    ))}
-                    {currentCircleTopic.joinedCount > 6 && (
-                      <span className="-ml-2 flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-white bg-[#f2e7db] px-1 text-[9px] font-black text-[#8f7f6d]">
-                        +{currentCircleTopic.joinedCount - 6}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-center text-[10px] font-black leading-[1.25] text-[#b4834a]">
-                    <span className="block">每人至少获得3积分</span>
-                    <span className="block">后续作品收益会平分给共创者</span>
-                  </p>
-                </div>
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSelectedTopic(currentCircleTopic);
-                    setScreen('join');
-                  }}
-                  className="h-12 shrink-0 rounded-full bg-[#FE2C55] px-5 text-[13px] font-black text-white shadow-[0_12px_26px_rgba(254,44,85,0.22)] active:scale-95 transition-transform"
-                >
-                  参与共创
-                </button>
-              </div>
-            </div>
-          </motion.article>
-        </div>
-      </main>
-    </div>
-  );
-
-
-
-  return (
-    <div className="flex flex-col h-full bg-black font-sans relative overflow-hidden">
-      {/* Header Overlay */}
-      <AnimatePresence>
-        {!isPureMode && (
-          <motion.header
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-0 left-0 right-0 z-50 px-4 pt-12 flex items-center justify-between pointer-events-none"
-          >
-            {isMyWorkMode ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCircleIsMyWorkMode(false);
-                  setCircleInitialTopicId(undefined);
-                  setScreen(prevScreen || 'me');
-                }}
-                className="w-10 h-10 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white pointer-events-auto active:scale-90 transition-transform"
-              >
-                <ArrowLeft size={20} />
-              </button>
-            ) : (
-              <>
-                 <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/10 bg-black/36 p-1 backdrop-blur-xl">
-                   {circleTabs.map(tab => (
-                     <button
-                       key={tab}
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         setActiveTab(tab);
-                       }}
-                       className={`h-8 rounded-full px-4 text-[11px] font-black transition-all ${
-                         activeTab === tab ? 'bg-white text-black' : 'text-white/60'
-                       }`}
-                     >
-                       {tab}
-                     </button>
-                   ))}
-                 </div>
-                 <div className="pointer-events-auto rounded-full border border-gold/20 bg-gold/14 px-3 py-2 text-[10px] font-black text-gold backdrop-blur-xl">
-                   官方话题
-                 </div>
-              </>
-            )}
-          </motion.header>
-        )}
-      </AnimatePresence>
-      <GiftDonorDetailModal
-              isOpen={isGiftDonorDetailModalOpen}
-              onClose={() => setIsGiftDonorDetailModalOpen(false)}
-              gifts={MOCK_GIFT_RECORDS}
-            />
-
-      {isPureMode && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsPureMode(false);
-          }}
-          className="absolute right-4 bottom-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/24 text-white shadow-lg backdrop-blur-sm drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] active:scale-95 transition-transform"
-          aria-label="退出清屏模式"
-        >
-          <FileOutput size={28} strokeWidth={2.5} />
-        </button>
-      )}
-
-      {/* Full Screen Scroll Container */}
-      <main className={`h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar ${isPureMode ? 'pb-0' : 'pb-24'}`}>
-        {circleFeedTopics.map((topic, i) => {
-          const isFavorite = savedTopicIds.has(topic.id);
-          const isLiked = likedTopicIds.has(topic.id);
-          const isSpotlighted = spotlightTopicIds.has(topic.id) || topic.status === 'completed';
-
-          return (
-            <section
-              key={`${topic.id}-${i}`}
-              className={`h-full w-full snap-start relative flex flex-col overflow-hidden ${
-                isPureMode ? 'items-center justify-center pb-0' : 'justify-end pb-12'
-              }`}
-              onPointerDown={startPointerGesture}
-              onPointerUp={endPointerGesture}
-              onPointerLeave={cancelPointerGesture}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (ignoreNextClickRef.current) {
-                  ignoreNextClickRef.current = false;
-                  return;
-                }
-                setIsPaused(!isPaused);
-              }}
-            >
-              {/* Play/Pause Indicator Animation */}
-              <AnimatePresence>
-                {isPaused && (
-                   <motion.div
-                     initial={{ opacity: 0, scale: 0.5 }}
-                     animate={{ opacity: 1, scale: 1 }}
-                     exit={{ opacity: 0, scale: 1.5 }}
-                     className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
-                   >
-                     <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10 shadow-2xl">
-                        <Play size={42} className="text-white fill-white ml-1" strokeWidth={3} />
-                     </div>
-                   </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Background */}
-              <div className={`absolute inset-0 bg-gradient-to-br transition-all duration-1000 ${
-                topic.tone === 'blue' ? 'from-indigo-600 via-indigo-900' : 'from-amber-600 via-amber-900'
-              } to-black z-0 shadow-inner`}>
-                <div className="absolute inset-0 grid grid-cols-2 grid-rows-6 gap-px bg-black">
-                  {Array.from({ length: 12 }).map((_, frameIndex) => {
-                    const frameSeed = (i * 3 + frameIndex) % dailyLifeFrames.length;
-                    const userName = dailyLifeUsers[frameSeed];
-
-                    return (
-                      <div key={frameIndex} className="relative overflow-hidden bg-white/5">
-                        <video
-                          src={dailyLifeVideos[frameSeed]}
-                          poster={dailyLifeFrames[frameSeed]}
-                          className="h-full w-full object-cover"
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                          onTimeUpdate={(event) => {
-                            if (event.currentTarget.currentTime > 5) {
-                              event.currentTarget.currentTime = 0;
-                            }
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/8 to-black/20" />
-                        <div className="absolute inset-x-3 top-1/2 -translate-y-1/2">
-                          <p className="line-clamp-2 text-center text-[13px] font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-                            {dailyLifeCaptions[frameSeed]}
-                          </p>
-                        </div>
-                        <div className="absolute bottom-2 left-2 right-2 flex min-w-0 items-center gap-1.5">
-                          <img
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`}
-                            alt=""
-                            className="h-5 w-5 shrink-0 rounded-full border border-white/45 bg-white/80 object-cover"
-                          />
-                          <span className="truncate text-[9px] font-black text-white/88 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">
-                            {userName}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className={`absolute inset-0 bg-black/20 transition-opacity ${isPaused ? 'opacity-100' : 'opacity-0'}`}></div>
-              </div>
-
-              {!isPureMode && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-44 bg-gradient-to-t from-black/85 via-black/48 to-transparent" />
-              )}
-
-              {/* Interaction Bar (Fixed Right) */}
-              <AnimatePresence>
-                {!isPureMode && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="absolute right-2 bottom-16 z-20 flex flex-col items-center gap-4"
-                  >
-                    <div className="relative mb-2">
-                      <div className="w-14 h-14 rounded-full border-2 border-white/20 p-0.5 bg-dark">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.creator}`} alt="" className="w-full h-full rounded-full object-cover" />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTopic(topic);
-                          setScreen('join');
-                        }}
-                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 bg-red-primary rounded-full flex items-center justify-center text-white border-2 border-dark"
-                      >
-                        <Plus size={15} strokeWidth={3} />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleLike(topic.id); }}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] ${
-                          isLiked ? 'text-red-500' : 'text-white'
-                        }`}
-                      >
-                        <Heart size={28} strokeWidth={2.5} className="fill-current" />
-                      </button>
-                      <span className="text-[10px] font-black text-white/80">{topic.likes}</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
-                      >
-                        <MessageCircle size={28} strokeWidth={2.5} className="fill-current" />
-                      </button>
-                      <span className="text-[10px] font-black text-white/80">42</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleFavorite(topic.id); }}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] ${
-                          isFavorite ? 'text-gold' : 'text-white'
-                        }`}
-                      >
-                        <Star size={28} strokeWidth={2.5} className="fill-current" />
-                      </button>
-                      <span className="text-[10px] font-black text-white/80">
-                        {topic.bookmarks && topic.bookmarks !== '0' ? topic.bookmarks : '收藏'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSharingTopic(topic);
-                          if (isMyWorkMode) {
-                            setIsMoreDrawerOpen(true);
-                          } else {
-                            handleShare(topic);
-                          }
-                        }}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
-                      >
-                        {isMyWorkMode ? <MoreHorizontal size={28} strokeWidth={3} /> : <CornerUpRight size={28} strokeWidth={3} />}
-                      </button>
-                      <span className="text-[10px] font-black text-white/80">
-                        {isMyWorkMode ? '更多' : (topic.shares && topic.shares !== '0' ? topic.shares : '分享')}
-                      </span>
-                    </div>
-
-                    <div className="relative flex flex-col items-center gap-1">
-                      {showClearScreenHint && (
-                        <div className="pointer-events-none absolute right-[42px] top-[18px] z-10 flex -translate-y-1/2 items-center">
-                          <div className="whitespace-nowrap rounded-full border border-white/14 bg-black/52 px-3 py-1.5 text-[10px] font-black leading-none text-white/88 shadow-[0_8px_24px_rgba(0,0,0,0.34)] backdrop-blur-md">
-                            右滑或点这里，清爽看全屏
-                          </div>
-                          <div className="h-px w-3 bg-white/36" />
-                          <div className="h-1.5 w-1.5 rounded-full bg-white/70 shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-                        </div>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowClearScreenHint(false);
-                          setIsPureMode(true);
-                        }}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center text-white active:scale-95 transition-all drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] ${
-                          showClearScreenHint ? 'bg-white/10 ring-1 ring-white/35 shadow-[0_0_18px_rgba(255,255,255,0.18)]' : ''
-                        }`}
-                        aria-label="进入清屏模式"
-                      >
-                        <FileX size={28} strokeWidth={2.5} />
-                      </button>
-                      <span className="text-[10px] font-black text-white/80">清屏</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <HeatingConfirmationModal
-                isOpen={isHeatingModalOpen}
-                onClose={() => setIsHeatingModalOpen(false)}
-                onConfirm={() => sharingTopic && spotlightTopic(sharingTopic.id)}
-              />
-
-              {/* Infobar (Bottom Left) */}
-              <AnimatePresence>
-                {!isPureMode && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="relative z-10 max-w-[78%] px-6 -mb-7 space-y-2.5 pointer-events-auto"
-                  >
-                    <p className="flex items-start gap-2 text-[22px] font-black leading-[1.05] tracking-normal text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.72)]">
-                      <span className="min-w-0">{topic.title}</span>
-                      {isSpotlighted && (
-                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gold/25 bg-gold/18 text-gold shadow-[0_4px_14px_rgba(0,0,0,0.38)]">
-                          <Flame size={11} className="fill-current" />
-                        </span>
-                      )}
-                    </p>
-
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedCreatorsId(expandedCreatorsId === topic.id ? null : topic.id);
-                      }}
-                      className="flex w-fit origin-left cursor-pointer items-center gap-2 rounded-full bg-black/26 py-1 pr-2.5 active:scale-95 transition-transform backdrop-blur-[2px]"
-                    >
-                        <div className={`flex ${expandedCreatorsId === topic.id ? 'flex-wrap gap-2' : '-space-x-2'}`}>
-                          {Array.from({ length: expandedCreatorsId === topic.id ? topic.joinedCount : Math.min(topic.joinedCount, 3) }).map((_, i) => (
-                            <motion.div
-                              layout
-                              key={i}
-                              onClick={(e) => {
-                                if (expandedCreatorsId === topic.id) {
-                                  e.stopPropagation();
-                                  setSelectedUserName(`共创者 ${i + 1}`);
-                                  setScreen('user-profile');
-                                }
-                              }}
-                              className={`overflow-hidden rounded-full border-2 border-black/70 ${expandedCreatorsId === topic.id ? 'h-8 w-8 shadow-lg active:scale-90 transition-transform' : 'h-7 w-7'}`}
-                            >
-                              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topic.id + i}`} alt="" className="w-full h-full object-cover" />
-                            </motion.div>
-                          ))}
-                          {expandedCreatorsId !== topic.id && topic.joinedCount > 3 && (
-                              <div className="z-10 -ml-2 flex h-7 w-7 items-center justify-center rounded-full border-2 border-black/70 bg-white/16 backdrop-blur-md">
-                                <span className="text-[8px] font-black text-white/90">+{topic.joinedCount - 3}</span>
-                              </div>
-                          )}
-                        </div>
-                      <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-wider text-white/58 drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
-                          {topic.status === 'completed' ? `${topic.joinedCount}人共创` : '参与共创'}
-                          <ChevronRight size={12} className={`inline-block ml-0.5 transition-transform ${expandedCreatorsId === topic.id ? 'rotate-90' : ''}`} />
-                        </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </section>
-          );
-        })}
-      </main>
-
-       <AnimatePresence>
-        {showComments && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="absolute inset-x-0 bottom-0 h-[60%] bg-dark/95 backdrop-blur-2xl rounded-t-[32px] z-[60] border-t border-white/5 flex flex-col pointer-events-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mt-3 mb-6 flex-shrink-0" onClick={() => setShowComments(false)} />
-            <div className="px-6 pb-4 flex items-center justify-between">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                评论 <span className="text-white/20 text-xs">42</span>
-              </h3>
-              <button onClick={() => setShowComments(false)} className="text-white/40 hover:text-white transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 space-y-6 no-scrollbar">
-              {[
-                { name: '南川', text: '这种拼在一起的日常很有生命力。', time: '12h' },
-                { name: 'Echo', text: '比普通 vlog 更像一群人的共同记忆。', time: '15h' },
-                { name: '林野', text: '想知道这是哪个城市的街景。', time: '18h' },
-              ].map((cmt, i) => (
-                <div key={i} className="flex gap-3">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${cmt.name}`} alt="" className="w-8 h-8 rounded-full border border-white/10 bg-white/5" />
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-black text-white/30 tracking-widest uppercase">{cmt.name}</p>
-                      <span className="text-[9px] text-white/10">{cmt.time} · IP：{['广东', '浙江', '上海', '北京', '四川'][i % 5]}</span>
-                    </div>
-                    <p className="text-sm text-white/70 leading-relaxed">{cmt.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-6 bg-black/40 border-t border-white/5 pb-10">
-              <div className="flex gap-3 items-center">
-                <input
-                  type="text"
-                  placeholder="留下你的共创注脚..."
-                  className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-5 text-sm font-bold focus:border-white/20 outline-none placeholder:text-white/10"
-                />
-                <button className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-dark">
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isGiftDrawerOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setIsGiftDrawerOpen(false); }}
-            className="absolute inset-0 z-[100] bg-[rgba(72,56,39,0.18)] backdrop-blur-sm flex flex-col justify-end"
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#fffaf5] rounded-t-3xl pt-5 pb-4 shadow-[0_-10px_40px_rgba(103,81,58,0.14)] border-t border-[#eadfce] flex flex-col max-h-[76vh]"
-            >
-              <div className="w-12 h-1.5 bg-[#eadfce] rounded-full mx-auto mb-5 flex-shrink-0" />
-              <div className="flex justify-between items-start px-6 pb-4">
-                <div>
-                  <h3 className="text-[#2f261d] font-bold text-lg">选择礼物</h3>
-                  <p className="text-[10px] text-[#9f8f7e] font-black uppercase tracking-widest mt-1">赠送后将展示在评论区</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setScreen('recharge')}
-                    className="h-8 rounded-full border border-[#eadfce] bg-white px-3 text-[11px] font-black text-[#2f261d] shadow-sm active:scale-95 transition-transform flex items-center gap-1.5"
-                  >
-                    <Gem size={13} />
-                    {diamondBalance.toLocaleString()}
-                  </button>
-                  <button onClick={() => setIsGiftDrawerOpen(false)} className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-[#8f7f6d] border border-[#eadfce] active:scale-95 transition-transform shadow-sm">
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-3 overflow-y-auto px-6 pb-4 no-scrollbar">
-                {GIFTS.map((gift) => (
-                  <button
-                    key={gift.name}
-                    onClick={() => {
-                      setSelectedGiftName(gift.name);
-                    }}
-                    className={`relative bg-white border rounded-xl p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform shadow-sm ${
-                      selectedGiftName === gift.name ? 'border-[#FE2C55] shadow-[0_10px_24px_rgba(254,44,85,0.14)]' : 'border-[#eadfce]'
-                    }`}
-                  >
-                    {selectedGiftName === gift.name && (
-                      <span className="absolute right-2 top-2 h-4 w-4 rounded-full bg-[#FE2C55] text-white flex items-center justify-center">
-                        <Check size={10} strokeWidth={4} />
-                      </span>
-                    )}
-                    <span className="text-3xl leading-none">{gift.icon}</span>
-                    <span className="text-[10px] font-black text-[#2f261d] leading-tight text-center">{gift.name}</span>
-                    <span className="text-[9px] font-black text-[#FE2C55] tracking-widest">{gift.price}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="border-t border-[#eadfce] bg-[#fffaf5]/95 px-5 pt-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black text-[#9f8f7e] uppercase tracking-widest">已选择</p>
-                    <p className="mt-1 truncate text-sm font-black text-[#2f261d]">
-                      {selectedGift?.icon} {selectedGift?.name}
-                      <span className="ml-2 text-[#FE2C55]">{giftTotalCost.toLocaleString()}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 rounded-full bg-white border border-[#eadfce] p-1 shadow-sm">
-                    <button
-                      onClick={() => setGiftQuantity((q) => Math.max(1, q - 1))}
-                      className="h-8 w-8 rounded-full text-lg font-black text-[#8f7f6d] active:scale-95 transition-transform"
-                      aria-label="减少数量"
-                    >
-                      -
-                    </button>
-                    <span className="min-w-8 text-center text-sm font-black text-[#2f261d]">x{giftQuantity}</span>
-                    <button
-                      onClick={() => setGiftQuantity((q) => Math.min(99, q + 1))}
-                      className="h-8 w-8 rounded-full text-lg font-black text-[#2f261d] active:scale-95 transition-transform"
-                      aria-label="增加数量"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    {giftQuantityOptions.map((quantity) => (
-                      <button
-                        key={quantity}
-                        onClick={() => setGiftQuantity(quantity)}
-                        className={`h-8 min-w-10 rounded-full border px-3 text-[11px] font-black active:scale-95 transition-all ${
-                          giftQuantity === quantity
-                            ? 'border-[#2f261d] bg-[#2f261d] text-white'
-                            : 'border-[#eadfce] bg-white text-[#8f7f6d]'
-                        }`}
-                      >
-                        x{quantity}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={sendSelectedGift}
-                    className="ml-auto h-10 min-w-[116px] rounded-full bg-[#FE2C55] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(254,44,85,0.22)] active:scale-95 transition-transform disabled:opacity-50"
-                    disabled={!selectedGift}
-                  >
-                    赠送
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isShareDrawerOpen && sharingTopic && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setIsShareDrawerOpen(false); }}
-            className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col justify-end"
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#111111] rounded-t-[32px] pt-6 pb-12 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/5"
-            >
-              <div className="flex justify-between items-center px-6 mb-4">
-                <h3 className="text-white text-sm font-black tracking-[0.2em] uppercase">分享给好友</h3>
-                <button
-                  onClick={() => setIsShareDrawerOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-white/40 active:scale-95 transition-transform"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Multi-select Friends List */}
-              <div className="flex gap-4 overflow-x-auto no-scrollbar px-6 pb-2">
-                {sortedShareFriends.map((friend) => {
-                  const cpStyle = getCpStyle(friend.cpType);
-                  const isSelected = selectedShareUserIds.has(friend.id);
-                  return (
-                    <button
-                      key={friend.id}
-                      className="flex min-w-[64px] flex-col items-center gap-2 group relative"
-                      onClick={() => toggleShareUser(friend.id)}
-                    >
-                      <div className={`relative h-14 w-14 overflow-hidden rounded-full border-2 p-0.5 active:scale-95 transition-all ${
-                        isSelected ? 'border-red-primary bg-red-primary/10' : friend.cpType ? cpStyle.ring : 'border-white/5 bg-white/5'
-                      }`}>
-                        <img src={friend.avatar} alt={friend.name} className="h-full w-full rounded-full object-cover" />
-                        {friend.cpType && (
-                          <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[7px] font-black leading-none ${cpStyle.badge}`}>
-                            {friend.cpType}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className={`absolute top-0 right-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                          ? 'bg-red-primary border-red-primary opacity-100 scale-100'
-                          : 'bg-black/20 border-white/20 opacity-40 scale-75'
-                      }`}>
-                        {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
-                      </div>
-
-                      <span className={`text-[10px] font-black tracking-tight transition-colors ${
-                        isSelected ? 'text-white' : friend.cpType ? cpStyle.text : 'text-white/40'
-                      }`}>
-                        {friend.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Action Bar / Send Button */}
-              <AnimatePresence>
-                {selectedShareUserIds.size > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="px-6 py-2"
-                  >
-                    <button
-                      onClick={() => {
-                        showToast(`已向 ${selectedShareUserIds.size} 位好友发送共创邀请`);
-                        setIsShareDrawerOpen(false);
-                      }}
-                      className="w-full h-14 bg-red-primary text-white rounded-xl font-black uppercase text-xs shadow-[0_10px_30px_rgba(255,36,66,0.3)] active:scale-95 transition-transform"
-                    >
-                      发送给 {selectedShareUserIds.size} 位好友
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="h-px bg-white/5 w-full mx-auto max-w-[80%] my-2" />
-
-              {/* Other Sharing Channels */}
-              <div className="flex gap-6 overflow-x-auto no-scrollbar px-6 pb-2">
-                <button key="drawer2-save-album" className="flex flex-col items-center gap-2 group" onClick={() => { showToast('已保存到本地相册'); setIsShareDrawerOpen(false); }}>
-                  <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white/60 active:scale-95 transition-transform">
-                    <ImageIcon size={20} />
-                  </div>
-                  <span className="text-[9px] font-black text-white/40 group-active:text-white uppercase tracking-tighter">保存至相册</span>
-                </button>
-                <button
-                  key="drawer2-report"
-                  className="flex flex-col items-center gap-2 group"
-                  onClick={() => {
-                    setReportType('video');
-                    setReportTargetName(sharingTopic.title);
-                    setIsShareDrawerOpen(false);
-                    setScreen('report-user');
-                  }}
-                >
-                  <div className="w-12 h-12 bg-red-primary/10 border border-red-primary/20 rounded-xl flex items-center justify-center text-red-primary active:scale-95 transition-transform">
-                    <AlertTriangle size={20} />
-                  </div>
-                  <span className="text-[9px] font-black text-white/40 group-active:text-white uppercase tracking-tighter">举报作品</span>
-                </button>
-                <button
-                  key="drawer2-heat-topic"
-                  className="flex flex-col items-center gap-2 group"
-                  onClick={() => {
-                    setIsShareDrawerOpen(false);
-                    setIsHeatingModalOpen(true);
-                  }}
-                >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${
-                      spotlightTopicIds.has(sharingTopic.id) ? 'bg-gold/10 text-gold border-gold/30' : 'bg-white/5 text-white/40 border-white/10'
-                  }`}>
-                    <Flame size={20} className={spotlightTopicIds.has(sharingTopic.id) ? 'fill-current' : ''} />
-                  </div>
-                  <span className={`text-[9px] font-black uppercase tracking-tighter ${spotlightTopicIds.has(sharingTopic.id) ? 'text-gold' : 'text-white/40 group-active:text-white'}`}>
-                    {spotlightTopicIds.has(sharingTopic.id) ? '已加热' : '加热话题'}
-                  </span>
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isMoreDrawerOpen && sharingTopic && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setIsMoreDrawerOpen(false); }}
-            className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-sm flex flex-col justify-end"
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#111111] rounded-t-[32px] pt-6 pb-12 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/5"
-            >
-              <div className="flex justify-between items-center px-6 mb-6 flex-shrink-0">
-                <h3 className="text-white text-sm font-black tracking-[0.2em] uppercase">更多选项</h3>
-                <button
-                  onClick={() => setIsMoreDrawerOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-white/40 active:scale-95 transition-transform"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="px-6 grid grid-cols-3 gap-4 mb-8 flex-shrink-0">
-                {[
-                  { icon: <CornerUpRight size={20} />, label: '分享片段', action: () => { setIsMoreDrawerOpen(false); setIsShareDrawerOpen(true); } },
-                  { icon: <AlertTriangle size={20} className="text-red-primary" />, label: '举报作品', action: () => { setReportType('video'); setReportTargetName(sharingTopic.title); setIsMoreDrawerOpen(false); setScreen('report-user'); } },
-                  ...(isMyWorkMode ? [
-                    { icon: <ShieldCheck size={20} />, label: '权限设置', action: () => { setIsMoreDrawerOpen(false); setIsVisibilityDrawerOpen(true); } },
-                    { icon: <Trash2 size={20} className="text-red-primary" />, label: '删除作品', action: () => { showToast('作品已申请删除'); setIsMoreDrawerOpen(false); } },
-                  ] : []),
-                ].map((item, i) => (
-                  <button key={i} onClick={item.action} className="flex flex-col items-center gap-3 group">
-                    <div className="w-14 h-14 bg-white/5 rounded-xl flex items-center justify-center text-white/60 active:scale-95 transition-all group-hover:bg-white/10 group-hover:text-white">
-                      {item.icon}
-                    </div>
-                    <span className="text-[10px] font-bold text-white/30 group-active:text-white transition-colors text-center">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="px-6 space-y-2 flex-shrink-0">
-                 <button onClick={() => { showToast('已保存到本地相册'); setIsMoreDrawerOpen(false); }} className="w-full flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 active:bg-white/10 transition-colors">
-                    <span className="text-sm font-bold text-white/80">下载作品</span>
-                    <ChevronRight size={16} className="text-white/20" />
-                 </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <VisibilitySelectorDrawer
-        isOpen={isVisibilityDrawerOpen}
-        onClose={() => setIsVisibilityDrawerOpen(false)}
-        visibility={visibility}
-        setVisibility={setVisibility}
-        selectedFriendIds={selectedFriendIds}
-        setSelectedFriendIds={setSelectedFriendIds}
-      />
-      <AnimatePresence>
-        {isGiftersDrawerOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setIsGiftersDrawerOpen(false); }}
-            className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col justify-end"
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#111111] rounded-t-3xl pt-6 pb-12 space-y-6 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/5 flex flex-col max-h-[70vh]"
-            >
-              <div className="flex justify-between items-center px-6">
-                <h3 className="text-white font-bold text-lg">赠送榜单</h3>
-                <button onClick={() => setIsGiftersDrawerOpen(false)} className="w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-white/60 active:scale-95 transition-transform">
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="h-px bg-white/5 w-full" />
-
-              <div className="overflow-y-auto px-6 space-y-5 pb-6">
-                {[
-                    {name: 'Alex', diamond: 8000, img: 'G1', rank: 1},
-                    {name: 'Soul', diamond: 5200, img: 'G2', rank: 2},
-                    {name: 'Echo', diamond: 3100, img: 'G3', rank: 3},
-                    {name: 'John', diamond: 1200, img: 'User4', rank: 4},
-                    {name: 'Sarah', diamond: 800, img: 'User5', rank: 5},
-                    {name: 'Mike', diamond: 400, img: 'Creator0', rank: 6},
-                    {name: 'Emma', diamond: 100, img: 'Creator1', rank: 7},
-                ].map((g) => (
-                  <div key={g.rank} className="flex items-center gap-4">
-                    <div className={`w-8 text-center font-black ${g.rank <= 3 ? 'text-gold text-xl' : 'text-white/40 text-sm'}`}>{g.rank}</div>
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${g.img}`} alt={g.name} className="w-10 h-10 rounded-full border border-white/10 bg-dark object-cover" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-white/90">{g.name}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 glass-pill px-3 py-1 rounded-full">
-                      <Gift size={12} className="text-indigo-400" />
-                      <span className="text-xs font-black tracking-widest text-white/80">{g.diamond}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// --- Main App ---
-
-// --- Energy Detail Screen ---
-
-const EnergyDetailScreen = ({ setScreen, prevScreen, balance }: { setScreen: (s: Screen) => void, prevScreen: Screen, balance: number }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'get' | 'use'>('all');
-  const [showInfo, setShowInfo] = useState(false);
-
-  const transactions = [
-    { id: 1, type: 'get', title: '完成共创话题', amount: 500, time: '今天 09:41', icon: Zap },
-    { id: 2, type: 'get', title: '获得他人赠送的礼物', amount: 200, time: '今天 08:30', icon: Gift },
-    { id: 3, type: 'use', title: '兑换「星轨戒指」', amount: -600, time: '昨天 21:15', icon: Heart },
-    { id: 4, type: 'get', title: '每日登录奖励', amount: 50, time: '昨天 08:00', icon: Flame },
-    { id: 5, type: 'get', title: '连续共创 7 天奖励', amount: 1000, time: '3天前', icon: ShieldCheck },
-    { id: 6, type: 'use', title: '解锁精选合集权限', amount: -300, time: '5天前', icon: Users },
-  ];
-
-  const filteredTransactions = transactions.filter(t => {
-    if (activeTab === 'all') return true;
-    return t.type === activeTab;
-  });
-
-  return (
-    <div className={lightPageRoot}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen(prevScreen)} className={lightIconButton}>
+    <div className={pageRoot}>
+      <header className={headerRoot}>
+        <button onClick={() => setScreen('me')} className={iconButton} aria-label="Back">
           <ArrowLeft size={20} />
         </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">积分明细</h2>
-        <button onClick={() => setShowInfo(!showInfo)} className={lightIconButton}>
-          <HelpCircle size={20} />
-        </button>
+        <h1 className="text-lg font-black">Settings</h1>
+        <div className="h-10 w-10" />
       </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
-        {/* Total Balance Card */}
-        <section className="px-6 py-8">
-          <div className="p-8 bg-gradient-to-br from-gold/10 via-card to-card rounded-[28px] border border-gold/10 relative overflow-hidden shadow-xl">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-gold/5 blur-3xl -mr-24 -mt-24 pointer-events-none"></div>
-            <div className="flex justify-between items-start relative z-10">
-              <div className="space-y-2">
-                <p className="text-xs font-black uppercase text-gold tracking-widest">当前积分总值</p>
-                <div className="flex items-baseline gap-2">
-                  <h1 className="text-6xl font-bold text-white">{balance.toLocaleString()}</h1>
-                  <Zap size={24} className="text-gold fill-gold animate-pulse" />
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center text-gold border border-gold/20">
-                <Flame size={24} fill="currentColor" />
-              </div>
-            </div>
-
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-[10px] font-black text-white/30 uppercase mb-1">今日获得</p>
-                <p className="text-xl font-bold text-green-400">+750</p>
-              </div>
-              <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-[10px] font-black text-white/30 uppercase mb-1">本周消耗</p>
-                <p className="text-xl font-bold text-rose-500">-600</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Info Explainer */}
-        <AnimatePresence>
-          {showInfo && (
-            <motion.section
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="px-6 mb-6 overflow-hidden"
-            >
-              <div className="p-6 bg-soft rounded-[24px] border border-white/10 space-y-4">
-                <div className="flex items-center gap-2 text-gold">
-                  <ShieldCheck size={16} />
-                  <h4 className="text-sm font-bold">关于“积分值”</h4>
-                </div>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-white/80">什么是积分？</p>
-                    <p className="text-[11px] text-white/40 leading-relaxed italic">积分是 DR圈共创活跃度的象征，它记录了你对每一个共创话题的参与和对他人的贡献。</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-white/80">如何获得？</p>
-                    <ul className="text-[11px] text-white/40 list-disc list-inside space-y-1 italic">
-                      <li>发起话题：500 积分</li>
-                      <li>参与并合拍：300 积分</li>
-                      <li>收到礼物：积分值会根据礼物价值增加</li>
-                      <li>每日登录：50 积分</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
-
-        {/* Tabs */}
-        <section className="px-6 mb-4">
-          <div className="flex bg-soft p-1 rounded-xl border border-white/5">
-            {[
-              { id: 'all', label: '全部记录' },
-              { id: 'get', label: '获取' },
-              { id: 'use', label: '消耗' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${
-                  activeTab === tab.id ? 'bg-white text-dark shadow-md' : 'text-white/40 hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Transaction Legend/Info in Header of list */}
-        <section className="px-6 mb-2">
-           <div className="flex justify-between items-center text-[10px] font-black text-white/10 uppercase tracking-widest px-2">
-              <span>项目</span>
-              <span>数额/时间</span>
-           </div>
-        </section>
-
-        {/* Transaction History List */}
-        <section className="px-6 space-y-3">
-          {filteredTransactions.map((tx, i) => (
-            <motion.div
-              key={tx.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.05 }}
-              className="p-4 bg-card bento-card border border-white/5 flex items-center justify-between group active:scale-[0.98] transition-transform shadow-lg"
-            >
-              <div className="flex items-center gap-4 min-w-0 flex-1">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-white/[0.03] shrink-0 ${
-                  tx.type === 'get' ? 'bg-green-500/10 text-green-400' : 'bg-rose-500/10 text-rose-500'
-                }`}>
-                  <tx.icon size={20} strokeWidth={2.5} />
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-bold truncate pr-4 text-white">{tx.title}</h4>
-                  <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mt-1">{tx.time}</p>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <p className={`text-lg font-black ${tx.type === 'get' ? 'text-green-400' : 'text-white/80'}`}>
-                  {tx.type === 'get' ? '+' : ''}{tx.amount}
-                </p>
-                <div className="flex items-center justify-end gap-1 text-gold">
-                  <Zap size={10} fill="currentColor" />
-                </div>
-              </div>
-            </motion.div>
+      <main className="flex-1 overflow-y-auto px-5 py-5 no-scrollbar">
+        <section className="space-y-2 rounded-[24px] bg-white p-3 shadow-sm">
+          {['Account', 'Privacy', 'Notifications', 'Help'].map((item) => (
+            <button key={item} className="flex h-12 w-full items-center justify-between rounded-xl px-3 text-sm font-black active:bg-[#f8f1e8]">
+              {item}
+              <ChevronRight size={16} className="text-[#b0a08e]" />
+            </button>
           ))}
-          {filteredTransactions.length === 0 && (
-            <div className="py-20 text-center">
-              <p className="text-white/20 text-xs font-black uppercase tracking-widest">暂无记录</p>
-            </div>
-          )}
         </section>
-
-        {/* Explanatory Module */}
-        <section className="p-6 mt-6">
-           <div className="bento-card bg-gold p-8 space-y-6 relative overflow-hidden shadow-xl">
-              <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/10 blur-3xl -mb-16 -mr-16"></div>
-              <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Star size={16} fill="currentColor" className="text-white" />
-                 </div>
-                 <h4 className="font-bold text-lg text-white">积分等级：精英合创者</h4>
-              </div>
-              <p className="text-white/80 text-sm leading-relaxed italic">
-                 你当前的积分储备已超过全城 85% 的用户。高积分用户在发起话题时会获得优先全城推荐。
-              </p>
-              <div className="pt-4 flex gap-3">
-                 <button className="flex-1 h-12 bg-white text-dark rounded-lg font-black uppercase text-[10px] active:scale-95 transition-transform shadow-xl">
-                    查看等级特权
-                 </button>
-                 <button className="flex-1 h-12 bg-dark/20 text-dark rounded-lg font-black uppercase text-[10px] border border-dark/20 active:scale-95 transition-transform">
-                    提升规则
-                 </button>
-              </div>
-           </div>
-        </section>
+        <button className={`${mutedButton} mt-5 w-full text-rose-500`}>Log Out</button>
       </main>
-
-      <footer className="p-6 pt-0 bg-dark/80 backdrop-blur-md border-t border-white/[0.03]">
-         <button
-           onClick={() => setScreen('shop')}
-           className="w-full h-14 bg-white text-dark rounded-[18px] font-black uppercase text-xs shadow-2xl active:scale-95 transition-transform flex items-center justify-center gap-2"
-         >
-           去DR商城兑换权益 <ArrowLeft size={16} className="rotate-180" />
-         </button>
-      </footer>
     </div>
   );
-};
-
-// --- Video Edit Screen ---
-
-const VideoEditScreen = ({ topic, setScreen, showToast, onPost, source = 'join' }: { topic: Topic, setScreen: (s: Screen) => void, showToast: (m: string) => void, onPost: (t: string, s: 'create' | 'join') => void, source?: 'create' | 'join' }) => {
-  const [subtitle, setSubtitle] = useState('');
-  const [posting, setPosting] = useState(false);
-  const [isEditingText, setIsEditingText] = useState(false);
-
-  const handlePost = () => {
-    setPosting(true);
-    setTimeout(() => {
-      onPost(topic.id, source);
-
-      if (source === 'create') {
-        setScreen('create-success');
-      } else {
-        setScreen('join-success');
-      }
-    }, 1500);
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-black relative">
-       {/* Header */}
-       <div className="absolute top-0 inset-x-0 pt-12 pb-4 flex items-center justify-between px-6 z-30 bg-gradient-to-b from-black/80 to-transparent">
-          <button
-            onClick={() => setScreen(source === 'create' ? 'create-and-shoot' : 'join')}
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white backdrop-blur-md"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h3 className="text-sm font-black uppercase text-white tracking-widest">编辑作品</h3>
-          <div className="w-10"></div>
-       </div>
-
-       {/* Preview Area */}
-       <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-4 overflow-hidden">
-          <div className="w-full max-h-[450px] aspect-[9/16] rounded-[28px] bg-[#111] shadow-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center transition-all duration-500">
-             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
-
-             {/* Subtitle Overlay */}
-             <div className="absolute top-1/2 inset-x-8 -translate-y-1/2 text-center z-10 px-4">
-                <AnimatePresence>
-                  {subtitle && (
-                    <motion.p
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-white text-lg font-bold drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] leading-tight"
-                    >
-                      {subtitle}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-             </div>
-
-             <div className="text-white/5 opacity-50">
-                <motion.div
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                >
-                  <Camera size={60} />
-                </motion.div>
-             </div>
-          </div>
-       </div>
-
-       {/* Edit Controls */}
-       <div className="bg-dark border-t border-white/5 p-6 pb-12 space-y-5">
-          <div className="space-y-3">
-             <div className="flex items-center justify-between ml-1">
-                <label className="text-[10px] font-black uppercase text-white/40 tracking-widest">编辑视频字幕 (选填)</label>
-                <span className="text-[9px] text-white/10 uppercase font-black">{subtitle.length}/30</span>
-             </div>
-             <div className="relative group">
-                <input
-                  className={`w-full h-12 bg-white/5 rounded-lg px-5 pr-12 font-bold outline-none border transition-all ${isEditingText ? 'border-gold bg-white/10' : 'border-white/5 focus:border-white/20'} text-sm text-white`}
-                  placeholder="给这段作品加句内心独白..."
-                  maxLength={30}
-                  value={subtitle}
-                  onFocus={() => setIsEditingText(true)}
-                  onBlur={() => setTimeout(() => setIsEditingText(false), 200)}
-                  onChange={(e) => setSubtitle(e.target.value)}
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {subtitle && (
-                    <button onClick={() => setSubtitle('')} className="w-8 h-8 rounded-full flex items-center justify-center text-white/20 hover:text-white transition-colors">
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-             </div>
-          </div>
-
-          <div className="flex gap-4 pt-1">
-             <button
-               onClick={() => setScreen(source === 'create' ? 'create-and-shoot' : 'join')}
-               disabled={posting}
-               className="flex-1 h-14 bg-white/5 border border-white/5 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all text-white/40 flex items-center justify-center gap-2"
-             >
-                <RotateCw size={14} /> 重拍
-             </button>
-             <button
-               onClick={handlePost}
-               disabled={posting}
-               className="flex-[2] h-14 bg-white text-dark rounded-xl font-black uppercase text-[10px] tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
-             >
-                {posting ? (
-                  <>
-                    <RotateCw size={14} className="animate-spin" />
-                    <span>发布中...</span>
-                    <motion.div
-                      className="absolute bottom-0 left-0 h-1 bg-gold"
-                      initial={{ width: 0 }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: 1.5 }}
-                    />
-                  </>
-                ) : (
-                  <>
-                    {source === 'create' ? '发起召集并发布' : '完成并发布'} <Check size={16} strokeWidth={4} />
-                  </>
-                )}
-             </button>
-          </div>
-       </div>
-    </div>
-  );
-};
-
-interface UserVlog {
-  id: string;
-  topicId: string;
-  title: string;
-  timestamp: number;
-  type: string;
-  status: string;
-  image: string;
-  likes: string;
 }
-
-interface EditableProfile {
-  name: string;
-  userId: string;
-  avatar: string;
-  bio: string;
-  gender: string;
-  birthday: string;
-  ipLocation: string;
-}
-
-interface CoupleDetail {
-  title: string;
-  eyebrow: string;
-  desc: string;
-  tag: string;
-  items: string[];
-  action: string;
-}
-
-// --- Feedback Screen ---
-
-const FeedbackScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  const [feedbackText, setFeedbackText] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => setSelectedImage(event.target?.result as string);
-      reader.readAsDataURL(e.target.files[0]);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-dark pt-8 p-6">
-      <header className="flex items-center justify-between mb-8">
-        <button onClick={() => setScreen('me')} className="w-10 h-10 glass-pill rounded-xl flex items-center justify-center border border-white/5">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <h2 className="font-bold text-white text-lg">用户反馈</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <div className="space-y-4">
-        <textarea
-          className="w-full h-40 bg-white/5 rounded-xl p-4 text-white placeholder-white/30"
-          placeholder="请输入您的问题或建议..."
-          value={feedbackText}
-          onChange={(e) => setFeedbackText(e.target.value)}
-        />
-
-        <div className="flex items-center gap-4">
-           <input type="file" onChange={handleImageUpload} className="hidden" id="image-upload" />
-           <label htmlFor="image-upload" className="w-20 h-20 rounded-xl bg-white/5 flex items-center justify-center text-white/40 border border-white/10 cursor-pointer">
-             {selectedImage ? <img src={selectedImage} className="w-full h-full object-cover rounded-xl" alt="Preview"/> : <Plus size={24}/>}
-           </label>
-        </div>
-
-        <button
-          className="w-full h-14 bg-gold text-dark font-black rounded-xl"
-          onClick={() => {
-            console.log('Submitting:', feedbackText, selectedImage);
-            setScreen('me');
-          }}
-        >
-          提交反馈
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const CoupleSpaceScreen = ({ setScreen, showToast, setCoupleDetail }: { setScreen: (s: Screen) => void, showToast: (m: string) => void, setCoupleDetail: (detail: CoupleDetail) => void }) => {
-  const [activeTab, setActiveTab] = useState<'private' | 'public'>('private');
-  const modules = [
-    { title: '今日约会日程', desc: '从见面、吃饭到睡前复盘，把约会变成一次高质量连接。', meta: '今晚 19:30', icon: CalendarHeart, screen: 'couple-date-schedule' as Screen, tone: 'from-[#fff1f4] to-white' },
-    { title: '今年一起旅行的地方', desc: '把想去的城市、预算、假期和纪念日排成共同期待。', meta: '6 个目的地', icon: MapPin, screen: 'couple-travel-plan' as Screen, tone: 'from-[#eef8f1] to-white' },
-    { title: '沟通桥梁', desc: '每天一个低压力问题，帮你们更准确理解彼此。', meta: '4/7 天', icon: MessageSquare, screen: 'couple-bridge' as Screen, tone: 'from-[#eef3fb] to-white' },
-    { title: '婚前共同地图', desc: '金钱、父母、城市、孩子、冲突修复，都沉淀成共识。', meta: '12 项议题', icon: Home, screen: 'couple-marriage-map' as Screen, tone: 'from-[#fff7eb] to-white' },
-  ];
-  const privateItems = [
-    { title: '今晚 20 分钟真心话', desc: '最近一次感到被爱，是因为什么？先各自回答，再交换回应。', tag: '1/2' },
-    { title: '情绪翻译器', desc: '把“我没事”翻译成真实需求，只描述感受和期待。', tag: '待回应' },
-    { title: '道歉与修复记录', desc: '记录一次冲突从发生到和好的过程，找到可复用的修复方式。', tag: '新' },
-  ];
-  const publicItems = [
-    { title: '我们的第 214 天', desc: '一起完成 6 次城市共创，公开展示共同创造的瞬间。', tag: '公开' },
-    { title: '共同目标：春天见父母', desc: '还差 2 个准备事项：时间确认、礼物清单。', tag: '里程碑' },
-    { title: '本周关系温度', desc: '沟通 4 次，争吵修复 1 次，关系温度比上周提升 8%。', tag: '可见' },
-  ];
-  const currentItems = activeTab === 'private' ? privateItems : publicItems;
-
-  return (
-    <div className="flex h-full flex-col bg-[radial-gradient(circle_at_top,#fff7f8_0%,#f8f1e8_44%,#efe6da_100%)] text-[#2f261d]">
-      <header className="flex items-center justify-between px-5 pb-4 pt-12">
-        <button onClick={() => setScreen('me')} className={lightIconButton} aria-label="返回">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#b4834a]">Couple Space</p>
-          <h2 className="text-lg font-black">情侣空间</h2>
-        </div>
-        <button onClick={() => showToast('已邀请对方一起完善情侣空间')} className={lightIconButton} aria-label="邀请">
-          <UserPlus size={19} />
-        </button>
-      </header>
-
-      <main className="flex-1 overflow-y-auto px-5 pb-10 no-scrollbar">
-        <section className="rounded-[32px] bg-[#2f261d] p-5 text-white shadow-[0_24px_50px_rgba(65,42,28,0.18)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Bridge to marriage</p>
-              <h1 className="mt-2 text-2xl font-black leading-tight">把说不出口的事，变成可以一起走的路</h1>
-            </div>
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/10">
-              <Heart size={28} className="text-[#ff9ab0]" fill="currentColor" />
-            </div>
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            {[['214天', '绑定时长'], ['76%', '了解进度'], ['12项', '婚前议题']].map(([value, label]) => (
-              <div key={label} className="rounded-2xl bg-white/8 p-3">
-                <p className="text-lg font-black">{value}</p>
-                <p className="mt-0.5 text-[10px] font-bold text-white/45">{label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-4 grid grid-cols-2 gap-2 rounded-[24px] bg-white/70 p-1.5">
-          {[{ id: 'private', label: '私密空间', icon: Lock }, { id: 'public', label: '公开空间', icon: Globe }].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'private' | 'public')}
-              className={`flex h-12 items-center justify-center gap-2 rounded-[18px] text-sm font-black transition-all ${activeTab === tab.id ? 'bg-white text-[#2f261d] shadow-sm' : 'text-[#8f7f6d]'}`}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </button>
-          ))}
-        </section>
-
-        <section className="mt-4 space-y-3">
-          <h3 className="px-1 text-base font-black">特别玩法</h3>
-          {modules.map((item) => (
-            <button key={item.title} onClick={() => setScreen(item.screen)} className={`w-full rounded-[24px] bg-gradient-to-r ${item.tone} p-4 text-left shadow-sm active:scale-[0.99] transition-transform`}>
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2f261d] shadow-sm">
-                  <item.icon size={20} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-black">{item.title}</h4>
-                    <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black text-[#8f7f6d]">{item.meta}</span>
-                  </div>
-                  <p className="mt-1 text-xs font-bold leading-relaxed text-[#8f7f6d]">{item.desc}</p>
-                </div>
-                <ChevronRight size={17} className="text-[#b0a08e]" />
-              </div>
-            </button>
-          ))}
-        </section>
-
-        <section className="mt-4 space-y-3">
-          {currentItems.map((item) => (
-            <button
-              key={item.title}
-              onClick={() => {
-                setCoupleDetail({
-                  title: item.title,
-                  eyebrow: activeTab === 'private' ? 'Private room' : 'Public room',
-                  desc: item.desc,
-                  tag: item.tag,
-                  items: activeTab === 'private'
-                    ? ['先各自写下答案', '交换时只复述对方意思', '最后沉淀一个可执行约定']
-                    : ['确认哪些内容可以公开', '选择展示给朋友的版本', '发布前双方都可撤回'],
-                  action: activeTab === 'private' ? '开始填写回应' : '预览公开展示',
-                });
-                setScreen('couple-detail');
-              }}
-              className="w-full rounded-[24px] bg-white/82 p-4 text-left shadow-sm active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f4] text-[#FE2C55]">
-                  {activeTab === 'private' ? <Lock size={17} /> : <Globe size={17} />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black">{item.title}</h3>
-                    <span className="shrink-0 rounded-full bg-[#f6ede3] px-2.5 py-1 text-[10px] font-black text-[#8f7f6d]">{item.tag}</span>
-                  </div>
-                  <p className="mt-1.5 text-xs font-bold leading-relaxed text-[#8f7f6d]">{item.desc}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </section>
-      </main>
-    </div>
-  );
-};
-
-const CoupleModuleScreen = ({ setScreen, type, setCoupleDetail }: { setScreen: (s: Screen) => void, type: 'date' | 'travel' | 'bridge' | 'marriage', setCoupleDetail: (detail: CoupleDetail) => void }) => {
-  const configs = {
-    date: { eyebrow: 'Today date', title: '今日约会日程', desc: '把约会拆成可执行的小节点，让双方都知道今天如何靠近彼此。', icon: CalendarHeart, hero: '今晚 19:30', items: [['18:40', '下班前确认心情', '各自用 1 个词描述今天的状态'], ['19:30', '一起吃饭', '手机静音 40 分钟，聊今天最累的一刻'], ['23:20', '睡前复盘', '各说一句今天被照顾到的地方']], action: '生成今晚约会提醒' },
-    travel: { eyebrow: 'Travel wishlist', title: '今年一起旅行的地方', desc: '把目的地、预算、假期和纪念日放在同一张期待清单里。', icon: MapPin, hero: '6 个目的地', items: [['春天', '杭州', '周末短途，预算 1800'], ['五一', '厦门', '海边散步、一起做旅行账本'], ['纪念日', '京都', '长期愿望，先攒机票基金']], action: '新增想去的地方' },
-    bridge: { eyebrow: 'Communication bridge', title: '沟通桥梁', desc: '每天一个问题，不审判、不抢答，只帮你们听懂对方真正的需求。', icon: MessageSquare, hero: '4/7 天', items: [['表达感谢', '今天对方做的哪件小事让你安心？', '已完成'], ['说出担心', '最近你最怕我们忽略的问题是什么？', '待回应'], ['修复约定', '下次争吵暂停时，我们用什么暗号？', '未开始']], action: '开始今日沟通' },
-    marriage: { eyebrow: 'Marriage map', title: '婚前共同地图', desc: '把走向婚姻前必须聊清楚的事，变成双方都能回看的共识。', icon: Home, hero: '12 项议题', items: [['金钱观', '收入、储蓄、债务、共同账户', '已达成'], ['父母边界', '探望频率、经济支持、节日安排', '讨论中'], ['未来城市', '定居城市、买房节奏、职业机会', '待补充']], action: '继续完善共识' },
-  }[type];
-  const Icon = configs.icon;
-
-  return (
-    <div className="flex h-full flex-col bg-[radial-gradient(circle_at_top,#fffaf4_0%,#f7f2ea_48%,#efe6da_100%)] text-[#2f261d]">
-      <header className="flex items-center justify-between px-5 pb-4 pt-12">
-        <button onClick={() => setScreen('couple-space')} className={lightIconButton} aria-label="返回">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#b4834a]">{configs.eyebrow}</p>
-          <h2 className="text-lg font-black">{configs.title}</h2>
-        </div>
-        <div className="w-10" />
-      </header>
-      <main className="flex-1 overflow-y-auto px-5 pb-10 no-scrollbar">
-        <section className="rounded-[32px] bg-[#2f261d] p-5 text-white shadow-[0_24px_50px_rgba(65,42,28,0.18)]">
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10">
-              <Icon size={28} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">{configs.eyebrow}</p>
-              <h1 className="mt-1 text-2xl font-black">{configs.hero}</h1>
-              <p className="mt-1 text-xs font-bold leading-relaxed text-white/58">{configs.desc}</p>
-            </div>
-          </div>
-        </section>
-        <section className="mt-4 space-y-3">
-          {configs.items.map((item, index) => (
-            <div key={`${item[0]}-${index}`} className="rounded-[24px] bg-white/82 p-4 shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f4] text-xs font-black text-[#FE2C55]">{index + 1}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black">{item[0]}</h3>
-                    <span className="shrink-0 rounded-full bg-[#f6ede3] px-2.5 py-1 text-[10px] font-black text-[#8f7f6d]">{item[2]}</span>
-                  </div>
-                  <p className="mt-1.5 text-xs font-bold leading-relaxed text-[#8f7f6d]">{item[1]}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </section>
-        <button
-          onClick={() => {
-            setCoupleDetail({
-              title: configs.action,
-              eyebrow: configs.eyebrow,
-              desc: configs.desc,
-              tag: configs.hero,
-              items: configs.items.map((item) => `${item[0]}：${item[1]}`),
-              action: '保存并通知对方',
-            });
-            setScreen('couple-detail');
-          }}
-          className="mt-5 h-14 w-full rounded-[22px] bg-[#FE2C55] text-sm font-black text-white shadow-[0_16px_32px_rgba(254,44,85,0.22)] active:scale-95 transition-transform"
-        >
-          {configs.action}
-        </button>
-      </main>
-    </div>
-  );
-};
-
-const CoupleDetailScreen = ({ setScreen, detail, showToast }: { setScreen: (s: Screen) => void, detail: CoupleDetail, showToast: (m: string) => void }) => (
-  <div className="flex h-full flex-col bg-[radial-gradient(circle_at_top,#fffaf4_0%,#f7f2ea_48%,#efe6da_100%)] text-[#2f261d]">
-    <header className="flex items-center justify-between px-5 pb-4 pt-12">
-      <button onClick={() => setScreen('couple-space')} className={lightIconButton} aria-label="返回">
-        <ArrowLeft size={20} />
-      </button>
-      <div className="text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#b4834a]">{detail.eyebrow}</p>
-        <h2 className="text-lg font-black">详情</h2>
-      </div>
-      <div className="w-10" />
-    </header>
-    <main className="flex-1 overflow-y-auto px-5 pb-10 no-scrollbar">
-      <section className="rounded-[32px] bg-[#2f261d] p-5 text-white">
-        <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black text-white/60">{detail.tag}</span>
-        <h1 className="mt-4 text-2xl font-black leading-tight">{detail.title}</h1>
-        <p className="mt-2 text-sm font-bold leading-relaxed text-white/58">{detail.desc}</p>
-      </section>
-      <section className="mt-4 rounded-[28px] bg-white/82 p-5">
-        <h3 className="text-base font-black">下一步怎么做</h3>
-        <div className="mt-4 space-y-3">
-          {detail.items.map((item, index) => (
-            <div key={item} className="flex items-start gap-3 rounded-2xl bg-[#f8f1e8] p-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-[#FE2C55]">{index + 1}</div>
-              <p className="min-w-0 flex-1 text-xs font-bold leading-relaxed text-[#7d6f61]">{item}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-      <button onClick={() => showToast('已保存，等待对方回应')} className="mt-5 h-14 w-full rounded-[22px] bg-[#FE2C55] text-sm font-black text-white shadow-[0_16px_32px_rgba(254,44,85,0.22)] active:scale-95 transition-transform">
-        {detail.action}
-      </button>
-    </main>
-  </div>
-);
-
-const ContentDetailScreen = ({
-  item,
-  setScreen,
-  setSelectedUserName,
-  likedTopicIds,
-  toggleLike,
-  savedTopicIds,
-  toggleFavorite,
-  showToast,
-  setReportType,
-  setReportTargetName,
-  setCircleInitialTopicInfo,
-  spotlightTopic,
-  isSpotlighted,
-  diamondBalance,
-}: {
-  item: HomeFeedItem,
-  setScreen: (s: Screen) => void,
-  setSelectedUserName: (name: string) => void,
-  likedTopicIds: Set<string>,
-  toggleLike: (id: string) => void,
-  savedTopicIds: Set<string>,
-  toggleFavorite: (id: string) => void,
-  showToast: (m: string) => void,
-  setReportType: (type: 'account' | 'video') => void,
-  setReportTargetName: (name: string) => void,
-  setCircleInitialTopicInfo: (topic: Partial<Topic> | undefined) => void,
-  spotlightTopic: (id: string) => void,
-  isSpotlighted: boolean,
-  diamondBalance: number,
-}) => {
-  const [commentText, setCommentText] = useState('');
-  const [isPureMode, setIsPureMode] = useState(false);
-  const [areCreatorsExpanded, setAreCreatorsExpanded] = useState(false);
-  const [isShareDrawerOpen, setIsShareDrawerOpen] = useState(false);
-  const [isCommentDrawerOpen, setIsCommentDrawerOpen] = useState(false);
-  const [isGiftDonorDetailOpen, setIsGiftDonorDetailOpen] = useState(false);
-  const [isGiftDrawerOpen, setIsGiftDrawerOpen] = useState(false);
-  const [selectedGiftName, setSelectedGiftName] = useState(GIFTS[0]?.name || '');
-  const [giftQuantity, setGiftQuantity] = useState(1);
-  const [selectedShareUserIds, setSelectedShareUserIds] = useState<Set<string>>(new Set());
-  const initialCountdownSeconds = item.kind === 'video' ? 18 : item.kind === 'cp' ? 42 : item.kind === 'collab' ? 68 : 0;
-  const [remainingSeconds, setRemainingSeconds] = useState(initialCountdownSeconds);
-  const isLiked = likedTopicIds.has(item.topic.id);
-  const isSaved = savedTopicIds.has(item.topic.id);
-  const isCollabLike = item.kind === 'collab' || item.kind === 'cp';
-  const typeLabel = item.kind === 'collab' ? '共创完成' : item.kind === 'cp' ? 'CP共创完成' : item.kind === 'video' ? '视频完成' : '图片发布完成';
-  const videoRemainingTime = initialCountdownSeconds > 0
-    ? `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(remainingSeconds % 60).padStart(2, '0')}`
-    : '';
-  const authorName = isCollabLike ? `${item.topic.joinedCount} 位共创人` : item.author;
-  const giftRecords = MOCK_GIFT_RECORDS.filter(gift => gift.topicId === item.topic.id);
-  const displayGiftRecords = giftRecords.length > 0 ? giftRecords : MOCK_GIFT_RECORDS;
-  const totalGiftDiamonds = displayGiftRecords.reduce((sum, gift) => sum + gift.giftValue, 0);
-  const selectedGift = GIFTS.find((gift) => gift.name === selectedGiftName) || GIFTS[0];
-  const giftTotalCost = selectedGift ? selectedGift.price * giftQuantity : 0;
-  const giftQuantityOptions = [1, 3, 5, 10];
-  const comments = [
-    ['Mia', '这个片段很有现场感，像刚好路过。'],
-    ['周屿', item.kind === 'image' ? '这张图的光线好舒服。' : '完整内容点进来比信息流更清楚。'],
-    ['Echo', isCollabLike ? '多人拼在一起的节奏很好。' : '想看更多同系列。'],
-  ];
-
-  useEffect(() => {
-    setRemainingSeconds(initialCountdownSeconds);
-  }, [initialCountdownSeconds, item.id]);
-
-  useEffect(() => {
-    if (initialCountdownSeconds <= 0) return;
-    const timer = window.setInterval(() => {
-      setRemainingSeconds(prev => (prev > 0 ? prev - 1 : initialCountdownSeconds));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [initialCountdownSeconds]);
-
-  const sendComment = () => {
-    if (!commentText.trim()) return;
-    showToast('评论已发布');
-    setCommentText('');
-  };
-
-  const toggleShareUser = (id: string) => {
-    setSelectedShareUserIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const closeShareDrawer = () => {
-    setIsShareDrawerOpen(false);
-    setSelectedShareUserIds(new Set());
-  };
-
-  const sendSelectedGift = () => {
-    if (!selectedGift) return;
-    showToast(`已送出 ${giftQuantity} 个${selectedGift.name}`);
-    setIsGiftDrawerOpen(false);
-  };
-
-  const shareDrawer = (
-    <AnimatePresence>
-      {isShareDrawerOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={closeShareDrawer}
-          className="absolute inset-0 z-[100] flex flex-col justify-end bg-black/36 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-            onClick={(event) => event.stopPropagation()}
-            className="rounded-t-[32px] border-t border-[#eee4d8] bg-[#fffaf4] px-5 pb-10 pt-5 text-[#2f261d] shadow-[0_-18px_48px_rgba(47,38,29,0.18)]"
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-xl font-black tracking-[0.12em]">分享给好友</h3>
-              <button
-                onClick={closeShareDrawer}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f0e9df] text-[#7d6d5f] active:scale-95 transition-transform"
-                aria-label="关闭分享弹窗"
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4">
-              {sortedShareFriends.map((friend) => {
-                const isSelected = selectedShareUserIds.has(friend.id);
-                const cpStyle = getCpStyle(friend.cpType);
-                return (
-                  <button
-                    key={friend.id}
-                    className="relative flex min-w-[68px] flex-col items-center gap-2 active:scale-95 transition-transform"
-                    onClick={() => toggleShareUser(friend.id)}
-                  >
-                    <div className={`relative h-16 w-16 rounded-full border-[3px] p-0.5 transition-all ${
-                      isSelected ? 'border-[#FE2C55] bg-[#FE2C55]/10' : friend.cpType ? cpStyle.ring : 'border-[#eadfce] bg-white'
-                    }`}>
-                      <img src={friend.avatar} alt={friend.name} className="h-full w-full rounded-full object-cover" />
-                      {friend.cpType && (
-                        <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[8px] font-black leading-none ${cpStyle.badge}`}>
-                          {friend.cpType}
-                        </span>
-                      )}
-                    </div>
-                    <div className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all ${
-                      isSelected ? 'border-[#FE2C55] bg-[#FE2C55] opacity-100' : 'border-[#d8ccbd] bg-[#fffaf4] opacity-80'
-                    }`}>
-                      {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
-                    </div>
-                    <span className={`max-w-[68px] truncate text-[12px] font-black ${isSelected ? 'text-[#2f261d]' : friend.cpType ? cpStyle.text : 'text-[#8f8173]'}`}>
-                      {friend.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <AnimatePresence>
-              {selectedShareUserIds.size > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 12 }}
-                  className="pb-4"
-                >
-                  <button
-                    onClick={() => {
-                      showToast(`已向 ${selectedShareUserIds.size} 位好友发送共创`);
-                      closeShareDrawer();
-                    }}
-                    className="h-12 w-full rounded-xl bg-[#FE2C55] text-sm font-black text-white shadow-[0_12px_26px_rgba(254,44,85,0.24)] active:scale-[0.98] transition-transform"
-                  >
-                    发送给 {selectedShareUserIds.size} 位好友
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="mb-4 h-px bg-[#eee4d8]" />
-
-            <div className="flex gap-5 overflow-x-auto no-scrollbar pb-1">
-              {[
-                {
-                  key: 'wechat',
-                  icon: MessageCircle,
-                  label: '微信好友',
-                  tone: 'green',
-                  action: () => {
-                    showToast('已打开微信好友分享');
-                    closeShareDrawer();
-                  },
-                },
-                {
-                  key: 'moments',
-                  icon: Users2,
-                  label: '朋友圈',
-                  tone: 'green',
-                  action: () => {
-                    showToast('已打开朋友圈分享');
-                    closeShareDrawer();
-                  },
-                },
-                {
-                  key: 'copy-link',
-                  icon: CornerUpRight,
-                  label: '分享链接',
-                  tone: 'neutral',
-                  action: () => {
-                    showToast('链接已复制');
-                    closeShareDrawer();
-                  },
-                },
-                {
-                  key: 'save',
-                  icon: ImageIcon,
-                  label: '保存至相册',
-                  tone: 'neutral',
-                  action: () => {
-                    showToast('已保存到本地相册');
-                    closeShareDrawer();
-                  },
-                },
-                {
-                  key: 'report',
-                  icon: AlertTriangle,
-                  label: '举报',
-                  tone: 'red',
-                  action: () => {
-                    setReportType('video');
-                    setReportTargetName(item.title);
-                    closeShareDrawer();
-                    setScreen('report-user');
-                  },
-                },
-              ].map((actionItem) => {
-                const Icon = actionItem.icon;
-                const isRed = actionItem.tone === 'red';
-                const isGold = actionItem.tone === 'gold';
-                const isGreen = actionItem.tone === 'green';
-                return (
-                  <button
-                    key={actionItem.key}
-                    className="group flex min-w-[76px] flex-col items-center gap-2 active:scale-95 transition-transform"
-                    onClick={actionItem.action}
-                  >
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-xl border ${
-                      isRed
-                        ? 'border-[#FE2C55]/20 bg-[#FE2C55]/10 text-[#FE2C55]'
-                        : isGreen
-                          ? 'border-[#13c27b]/20 bg-[#13c27b]/10 text-[#10a86b]'
-                        : isGold
-                          ? 'border-[#d6b27e]/30 bg-[#d6b27e]/12 text-[#b4834a]'
-                          : 'border-[#e2d8ca] bg-[#f5efe7] text-[#7d6d5f]'
-                    }`}>
-                      <Icon size={23} className={isGold ? 'fill-current' : ''} />
-                    </div>
-                    <span className="text-[11px] font-black text-[#8f8173]">
-                      {actionItem.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  const commentDrawer = (
-    <AnimatePresence>
-      {isCommentDrawerOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setIsCommentDrawerOpen(false)}
-          className="absolute inset-0 z-[100] flex flex-col justify-end bg-black/36 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-[72%] rounded-t-[32px] border-t border-[#eee4d8] bg-[#fffaf4] px-5 pb-8 pt-5 text-[#2f261d] shadow-[0_-18px_48px_rgba(47,38,29,0.18)]"
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-black">评论 17</h3>
-              <button
-                onClick={() => setIsCommentDrawerOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f0e9df] text-[#7d6d5f] active:scale-95 transition-transform"
-                aria-label="关闭评论"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="max-h-[360px] space-y-5 overflow-y-auto no-scrollbar pb-5">
-              {comments.map(([name, text], index) => (
-                <div key={`${name}-${index}`} className="flex gap-3">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-9 w-9 shrink-0 rounded-full bg-white" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[12px] font-black text-[#8f8173]">{name} <span className="font-bold text-[#b7a899]">IP：{getUserIpLocation(name)}</span></p>
-                      <button className="flex h-8 w-8 items-center justify-center text-[#b7a899] active:scale-95 transition-transform">
-                        <Heart size={14} />
-                      </button>
-                    </div>
-                    <p className="mt-1 text-[14px] font-bold leading-relaxed text-[#3f352d]">{text}</p>
-                    <p className="mt-1 text-[11px] font-bold text-[#b7a899]">刚刚 · 回复</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 border-t border-[#eee4d8] pt-3">
-              <input
-                value={commentText}
-                onChange={(event) => setCommentText(event.target.value)}
-                onKeyDown={(event) => event.key === 'Enter' && sendComment()}
-                placeholder="说点什么..."
-                className="h-11 min-w-0 flex-1 rounded-full bg-white px-4 text-sm font-bold text-[#2f261d] outline-none placeholder:text-[#b7a899] shadow-sm"
-              />
-              <button
-                onClick={sendComment}
-                className="h-11 rounded-full bg-[#FE2C55] px-5 text-sm font-black text-white active:scale-95 transition-transform"
-              >
-                发送
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  const giftDrawer = (
-    <AnimatePresence>
-      {isGiftDrawerOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setIsGiftDrawerOpen(false)}
-          className="absolute inset-0 z-[100] flex flex-col justify-end bg-black/36 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-[76%] rounded-t-[32px] border-t border-[#eee4d8] bg-[#fffaf4] px-5 pb-8 pt-5 text-[#2f261d] shadow-[0_-18px_48px_rgba(47,38,29,0.18)]"
-          >
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-xl font-black">选择礼物</h3>
-                <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-black text-[#9b8a79]">
-                  作品总收益：{totalGiftDiamonds.toLocaleString()}
-                  <Gem size={12} className="text-[#d6b27e] fill-[#d6b27e]/20" />
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setIsGiftDrawerOpen(false);
-                    setIsGiftDonorDetailOpen(true);
-                  }}
-                  className="h-9 rounded-full border border-[#eadfce] bg-white px-3 text-[11px] font-black text-[#7d6d5f] shadow-sm active:scale-95 transition-transform"
-                >
-                  贡献榜
-                </button>
-                <button
-                  onClick={() => setIsGiftDrawerOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f0e9df] text-[#7d6d5f] active:scale-95 transition-transform"
-                  aria-label="关闭礼物弹窗"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-3 overflow-y-auto pb-4 no-scrollbar">
-              {GIFTS.map((gift) => (
-                <button
-                  key={gift.name}
-                  onClick={() => setSelectedGiftName(gift.name)}
-                  className={`relative flex flex-col items-center gap-2 rounded-xl border bg-white p-3 shadow-sm active:scale-95 transition-transform ${
-                    selectedGiftName === gift.name ? 'border-[#FE2C55]' : 'border-[#eadfce]'
-                  }`}
-                >
-                  {selectedGiftName === gift.name && (
-                    <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#FE2C55] text-white">
-                      <Check size={10} strokeWidth={4} />
-                    </span>
-                  )}
-                  <span className="text-3xl leading-none">{gift.icon}</span>
-                  <span className="text-center text-[10px] font-black leading-tight">{gift.name}</span>
-                  <span className="text-[9px] font-black tracking-widest text-[#FE2C55]">{gift.price}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="border-t border-[#eee4d8] pt-3">
-              <div className="mb-3 flex items-center justify-between rounded-2xl border border-[#eadfce] bg-white/78 px-3 py-2 shadow-sm">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#9b8a79]">我的钻石</span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-black text-[#2f261d]">
-                  <Gem size={14} className="text-[#d6b27e] fill-[#d6b27e]/20" />
-                  {diamondBalance.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#9b8a79]">已选择</p>
-                  <p className="mt-1 truncate text-sm font-black">
-                    {selectedGift?.icon} {selectedGift?.name}
-                    <span className="ml-2 text-[#FE2C55]">{giftTotalCost.toLocaleString()}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 rounded-full border border-[#eadfce] bg-white p-1 shadow-sm">
-                  <button
-                    onClick={() => setGiftQuantity((quantity) => Math.max(1, quantity - 1))}
-                    className="h-8 w-8 rounded-full text-lg font-black text-[#8f7f6d] active:scale-95 transition-transform"
-                    aria-label="减少数量"
-                  >
-                    -
-                  </button>
-                  <span className="min-w-8 text-center text-sm font-black">x{giftQuantity}</span>
-                  <button
-                    onClick={() => setGiftQuantity((quantity) => Math.min(99, quantity + 1))}
-                    className="h-8 w-8 rounded-full text-lg font-black active:scale-95 transition-transform"
-                    aria-label="增加数量"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  {giftQuantityOptions.map((quantity) => (
-                    <button
-                      key={quantity}
-                      onClick={() => setGiftQuantity(quantity)}
-                      className={`h-8 min-w-10 rounded-full border px-3 text-[11px] font-black active:scale-95 transition-all ${
-                        giftQuantity === quantity
-                          ? 'border-[#2f261d] bg-[#2f261d] text-white'
-                          : 'border-[#eadfce] bg-white text-[#8f7f6d]'
-                      }`}
-                    >
-                      x{quantity}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={sendSelectedGift}
-                  className="ml-auto h-10 min-w-[112px] rounded-full bg-[#FE2C55] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(254,44,85,0.22)] active:scale-95 transition-transform"
-                >
-                  赠送
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  if (item.kind !== 'image') {
-    return (
-      <div className="relative flex h-full flex-col overflow-hidden bg-black pt-8 text-white">
-        <main className="relative flex-1 overflow-hidden bg-black">
-          {isCollabLike ? (
-            <div className="absolute inset-0 grid grid-cols-2 grid-rows-6 gap-px bg-black">
-              {Array.from({ length: 12 }).map((_, frameIndex) => {
-                const frameSeed = (item.mediaIndex + frameIndex) % dailyLifeFrames.length;
-                return (
-                  <div key={frameIndex} className="relative overflow-hidden bg-[#111]">
-                    <img src={dailyLifeFrames[frameSeed]} alt="" className="h-full w-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/62 via-black/5 to-black/18" />
-                    <p className="absolute inset-x-3 top-1/2 -translate-y-1/2 text-center text-[17px] font-black leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
-                      {dailyLifeCaptions[frameSeed]}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <video
-              src={dailyLifeVideos[item.mediaIndex]}
-              poster={dailyLifeFrames[item.mediaIndex]}
-              className="absolute inset-0 h-full w-full object-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
-          )}
-
-	          {!isPureMode && <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-3">
-	            <button onClick={() => setScreen('home')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/22 text-white backdrop-blur-md active:scale-95 transition-transform">
-	              <ArrowLeft size={24} />
-	            </button>
-	            <div className="h-10 w-10" />
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsGiftDrawerOpen(true)}
-                    className="flex h-10 items-center gap-1.5 rounded-full bg-black/28 px-3 text-white backdrop-blur-md active:scale-95 transition-transform"
-                    aria-label="赠送礼物"
-                  >
-                    <Gift size={18} />
-                    <span className="text-[12px] font-black leading-none">{totalGiftDiamonds.toLocaleString()}</span>
-                  </button>
-  	              <button onClick={() => setIsShareDrawerOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/22 text-white backdrop-blur-md active:scale-95 transition-transform" aria-label="分享">
-  	                <CornerUpRight size={24} />
-  	              </button>
-                </div>
-	          </div>}
-
-	          {!isPureMode && <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-64 bg-gradient-to-t from-black via-black/48 to-transparent" />}
-	          {!isPureMode && <section className="absolute inset-x-0 bottom-0 z-20 px-5 pb-5">
-	            <div className="flex items-center gap-3">
-	              {isCollabLike ? (
-                  <button
-                    onClick={() => setAreCreatorsExpanded(prev => !prev)}
-                    className="flex -space-x-2 active:scale-95 transition-transform"
-                    aria-label={areCreatorsExpanded ? '收起共创人' : '展开共创人'}
-                  >
-                    {Array.from({ length: Math.min(4, item.topic.joinedCount) }).map((_, index) => {
-                      const name = dailyLifeUsers[(item.mediaIndex + index) % dailyLifeUsers.length];
-                      return <img key={name} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-8 w-8 rounded-full border-2 border-white/80 bg-white" />;
-                    })}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setSelectedUserName(item.author);
-                      setScreen('user-profile');
-                    }}
-                    className="flex -space-x-2 active:scale-95 transition-transform"
-                    aria-label={`查看${item.author}主页`}
-                  >
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.author}`} alt="" className="h-10 w-10 rounded-full border-2 border-white/80 bg-white" />
-                  </button>
-                )}
-	              <button
-	                onClick={() => {
-	                  if (!isCollabLike) {
-                    setSelectedUserName(item.author);
-                    setScreen('user-profile');
-                  }
-                }}
-                className="min-w-0 flex-1 text-left"
-	              >
-	                <p className="truncate text-lg font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">{authorName}</p>
-	              </button>
-	              <div className="flex shrink-0 items-center gap-2">
-	                <span className="rounded-full bg-black/42 px-3 py-1.5 text-[12px] font-black text-white/88 backdrop-blur-md">{videoRemainingTime}</span>
-	                {!isCollabLike && (
-	                  <button className="h-9 rounded-full bg-[#FE2C55] px-5 text-sm font-black text-white active:scale-95 transition-transform">
-	                    关注
-	                  </button>
-	                )}
-	              </div>
-	            </div>
-              {isCollabLike && areCreatorsExpanded && (
-                <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar rounded-xl bg-black/26 p-2 backdrop-blur-md">
-                  {Array.from({ length: item.topic.joinedCount }).map((_, index) => {
-                    const name = dailyLifeUsers[(item.mediaIndex + index) % dailyLifeUsers.length];
-                    return (
-                      <button
-                        key={`expanded-creator-${index}-${name}`}
-                        onClick={() => {
-                          setSelectedUserName(name);
-                          setScreen('user-profile');
-                        }}
-                        className="shrink-0 active:scale-95 transition-transform"
-                        aria-label={`查看${name}主页`}
-                      >
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-8 w-8 rounded-full border border-white/70 bg-white" />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-	            <p className="mt-4 line-clamp-2 text-[15px] font-bold leading-relaxed text-white/92 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-	              {item.kind === 'cp' ? 'CP共创完成，一起记录两个人共同出现的瞬间。' : item.kind === 'collab' ? '多人共创完成，12 个真实片段拼成一条完整记忆。' : '视频完成，保留这一秒的动作、声音和现场感。'}
-	            </p>
-	          </section>}
-	        </main>
-
-	        <footer className="shrink-0 bg-black px-4 pb-6 pt-3">
-	          <div className="flex items-center gap-3">
-	            <button onClick={() => toggleLike(item.topic.id)} className="flex h-11 items-center gap-2 text-white active:scale-95 transition-transform">
-	              <Heart size={30} className={isLiked ? 'fill-[#FE2C55] text-[#FE2C55]' : ''} strokeWidth={2.4} />
-	              <span className="text-sm font-black">126</span>
-            </button>
-            <button onClick={() => toggleFavorite(item.topic.id)} className="flex h-11 items-center gap-2 text-white active:scale-95 transition-transform">
-              <Star size={30} className={isSaved ? 'fill-white' : ''} strokeWidth={2.4} />
-              <span className="text-sm font-black">29</span>
-            </button>
-            <button onClick={() => setIsCommentDrawerOpen(true)} className="flex h-11 items-center gap-2 text-white active:scale-95 transition-transform">
-	              <MessageCircle size={30} strokeWidth={2.4} />
-	              <span className="text-sm font-black">17</span>
-	            </button>
-              <button
-                onClick={() => setIsPureMode(prev => !prev)}
-                className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white active:scale-95 transition-transform"
-                aria-label={isPureMode ? '退出纯净模式' : '进入纯净模式'}
-              >
-                {isPureMode ? (
-                  <FileOutput size={25} />
-                ) : (
-                  <span className="relative block h-5 w-5">
-                    <span className="absolute left-0 top-0 h-2 w-2 rounded-tl-[3px] border-l-2 border-t-2 border-current" />
-                    <span className="absolute right-0 top-0 h-2 w-2 rounded-tr-[3px] border-r-2 border-t-2 border-current" />
-                    <span className="absolute bottom-0 left-0 h-2 w-2 rounded-bl-[3px] border-b-2 border-l-2 border-current" />
-                    <span className="absolute bottom-0 right-0 h-2 w-2 rounded-br-[3px] border-b-2 border-r-2 border-current" />
-                  </span>
-                )}
-              </button>
-	          </div>
-	        </footer>
-          {shareDrawer}
-          {commentDrawer}
-          {giftDrawer}
-          <GiftDonorDetailModal
-            isOpen={isGiftDonorDetailOpen}
-            onClose={() => setIsGiftDonorDetailOpen(false)}
-            gifts={displayGiftRecords}
-          />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full flex-col bg-[#fffaf4] pt-8 text-[#2f261d]">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[#eee4d8] bg-[#fffaf4]/94 px-4 py-3 backdrop-blur-xl">
-        <button onClick={() => setScreen('home')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#2f261d] shadow-sm active:scale-95 transition-transform">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="min-w-0 text-center">
-          <h2 className="truncate text-sm font-black">{item.title}</h2>
-        </div>
-        <button onClick={() => setIsShareDrawerOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#2f261d] shadow-sm active:scale-95 transition-transform" aria-label="分享">
-          <CornerUpRight size={19} />
-        </button>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-28">
-        <section className="bg-black">
-	          <div className="relative flex min-h-[420px] items-center justify-center bg-black">
-	            <img src={dailyLifeFrames[item.mediaIndex]} alt="" className="max-h-[620px] w-full object-contain" />
-              {item.kind === 'image' && (item.imageCount || 0) > 1 && (
-                <>
-                  <span className="absolute right-4 top-4 rounded-full bg-black/58 px-3 py-1 text-[12px] font-black text-white shadow-sm backdrop-blur-md">
-                    1/{item.imageCount}
-                  </span>
-                  <div className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5">
-                    {Array.from({ length: item.imageCount || 0 }).map((_, dotIndex) => (
-                      <span key={dotIndex} className={`h-1.5 rounded-full ${dotIndex === 0 ? 'w-4 bg-white' : 'w-1.5 bg-white/55'}`} />
-                    ))}
-                  </div>
-                </>
-              )}
-	          </div>
-        </section>
-
-        <section className="space-y-5 px-4 py-5">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={() => {
-                setSelectedUserName(item.author);
-                setScreen('user-profile');
-              }}
-              className="flex min-w-0 items-center gap-3 text-left"
-            >
-              <div className="flex -space-x-2">
-                {isCollabLike ? Array.from({ length: Math.min(4, item.topic.joinedCount) }).map((_, index) => {
-                  const name = dailyLifeUsers[(item.mediaIndex + index) % dailyLifeUsers.length];
-                  return <img key={name} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-10 w-10 rounded-full border-2 border-[#fffaf4] bg-white" />;
-                }) : (
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.author}`} alt="" className="h-10 w-10 rounded-full bg-white" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black">{authorName}</p>
-                <p className="text-[11px] font-bold text-[#9b8a79]">{item.topic.city} · 刚刚发布</p>
-              </div>
-            </button>
-            <button className="h-9 rounded-full bg-[#FE2C55] px-4 text-xs font-black text-white active:scale-95 transition-transform">
-              关注
-            </button>
-          </div>
-
-          <article className="space-y-2">
-            <h1 className="text-xl font-black leading-tight">{item.title}</h1>
-            <p className="text-[14px] font-medium leading-relaxed text-[#5f5145]">
-              一张来自日常瞬间的图片发布，记录此刻真实的光线和情绪。
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {[typeLabel, item.topic.city, item.topic.prompt].map(tag => (
-                <span key={tag} className="rounded-full bg-[#f2e8dc] px-3 py-1 text-[11px] font-black text-[#8f7f6d]">#{tag}</span>
-              ))}
-            </div>
-          </article>
-
-          <div className="h-px bg-[#eee4d8]" />
-
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black">评论 · 42</h3>
-              <button className="text-[11px] font-black text-[#9b8a79]">按热度</button>
-            </div>
-            {comments.map(([name, text]) => (
-              <div key={name} className="flex gap-3">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`} alt="" className="h-8 w-8 shrink-0 rounded-full bg-white" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-black text-[#9b8a79]">{name} <span className="font-bold text-[#b7a899]">IP：{getUserIpLocation(name)}</span></p>
-                  <p className="mt-1 text-[13px] font-bold leading-relaxed text-[#3f352d]">{text}</p>
-                  <p className="mt-1 text-[10px] font-bold text-[#b7a899]">刚刚 · 回复</p>
-                </div>
-                <button className="flex h-8 w-8 items-center justify-center text-[#b7a899]">
-                  <Heart size={14} />
-                </button>
-              </div>
-            ))}
-          </section>
-        </section>
-      </main>
-
-      <footer className="absolute inset-x-0 bottom-0 z-40 border-t border-[#eee4d8] bg-[#fffaf4]/96 px-3 pb-6 pt-2 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <input
-            value={commentText}
-            onChange={(event) => setCommentText(event.target.value)}
-            onKeyDown={(event) => event.key === 'Enter' && sendComment()}
-            placeholder="说点什么..."
-            className="h-10 min-w-0 flex-1 rounded-full bg-white px-4 text-sm font-bold text-[#2f261d] outline-none placeholder:text-[#b7a899] shadow-sm"
-          />
-          <button onClick={() => toggleLike(item.topic.id)} className={`flex h-10 min-w-12 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-black ${isLiked ? 'text-[#FE2C55]' : 'text-[#7d6d5f]'}`}>
-            <Heart size={20} className={isLiked ? 'fill-current' : ''} />
-            {item.topic.likes}
-          </button>
-          <button
-            onClick={() => toggleFavorite(item.topic.id)}
-            className={`flex h-10 w-10 items-center justify-center rounded-full ${isSaved ? 'text-[#b4834a]' : 'text-[#7d6d5f]'}`}
-            aria-label={isSaved ? '取消收藏' : '收藏'}
-          >
-            <Star size={20} className={isSaved ? 'fill-current' : ''} />
-          </button>
-          <button onClick={sendComment} className="flex h-10 w-10 items-center justify-center rounded-full text-[#7d6d5f]">
-            <MessageCircle size={20} />
-          </button>
-        </div>
-      </footer>
-      {shareDrawer}
-      {commentDrawer}
-    </div>
-  );
-};
 
 export default function App() {
+  const isAdminRoute = window.location.pathname.includes('/admin');
+  const [screen, setScreen] = useState<Screen>('home');
+  const [profile, setProfile] = useState<User>(CURRENT_USER);
+  const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
+  const [selectedThread, setSelectedThread] = useState<MessageThread | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
   useEffect(() => {
     document.body.dataset.appReady = '1';
     return () => {
@@ -7068,2172 +1615,79 @@ export default function App() {
     };
   }, []);
 
-  const [screen, setScreen] = useState<Screen>(() => (
-    new URLSearchParams(window.location.search).get('preview')?.startsWith('me-growth') ? 'me' : 'home'
-  ));
-  const [prevScreen, setPrevScreen] = useState<Screen>('home');
-  const [topics, setTopics] = useState<Topic[]>(TOPICS);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [selectedContentItem, setSelectedContentItem] = useState<HomeFeedItem | null>(null);
-  const [selectedUserName, setSelectedUserName] = useState<string>('林野');
-  const [savedTopicIds, setSavedTopics] = useState<Set<string>>(new Set());
-  const [likedTopicIds, setLikedTopics] = useState<Set<string>>(new Set());
-  const [spotlightTopicIds, setSpotlightTopicIds] = useState<Set<string>>(new Set());
-  const [diamondBalance, setDiamondBalance] = useState(1260);
-  const [energyBalance] = useState(8420);
-  const [userVlogs, setUserVlogs] = useState<UserVlog[]>([]);
-  const [coupleDetail, setCoupleDetail] = useState<CoupleDetail>({
-    title: '今晚 20 分钟真心话',
-    eyebrow: 'Private room',
-    desc: '各自回答一个问题，再把答案沉淀成关系备忘。',
-    tag: '1/2',
-    items: ['先各自写下答案', '交换时只复述对方意思', '最后沉淀一个可执行约定'],
-    action: '开始填写回应',
-  });
-  const [profile, setProfile] = useState<EditableProfile>({
-    name: CURRENT_USER.name,
-    userId: 'Dear6317B6SG',
-    avatar: CURRENT_USER.avatar,
-    bio: CURRENT_USER.bio,
-    gender: CURRENT_USER.gender || '',
-    birthday: '',
-    ipLocation: CURRENT_USER.ipLocation || '广东',
-  });
-  const [toast, setToast] = useState<string | null>(null);
-  const [initialNetworkTab, setInitialNetworkTab] = useState<'friends' | 'followers' | 'following'>('friends');
-  const [circleInitialTopicId, setCircleInitialTopicId] = useState<string | undefined>(undefined);
-  const [circleInitialTopicInfo, setCircleInitialTopicInfo] = useState<Partial<Topic> | undefined>(undefined);
-  const [circleIsMyWorkMode, setCircleIsMyWorkMode] = useState<boolean>(false);
-  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-  const [albumComposerSource, setAlbumComposerSource] = useState<'create' | 'join'>('create');
-  const [isGiftDonorDetailModalOpen, setIsGiftDonorDetailModalOpen] = useState(false);
-  const [hasShownHomeGrowthPrompt, setHasShownHomeGrowthPrompt] = useState(true);
-  const [isCirclePureMode, setIsCirclePureMode] = useState(false);
-  const [blockedUserNames, setBlockedUserNames] = useState<Set<string>>(new Set());
-  const [userRemarks, setUserRemarks] = useState<Record<string, string>>({});
-  const [reportTargetName, setReportTargetName] = useState('林野');
-  const [reportType, setReportType] = useState<'account' | 'video'>('account');
+  const visibleBottomNav = useMemo(() => ['home', 'smart-ring', 'messages', 'me'].includes(screen), [screen]);
 
-  useEffect(() => {
-    if (screen === 'splash') {
-      const timer = setTimeout(() => {
-        setScreen('login');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [screen]);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2000);
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 1800);
   };
 
-  const deleteVlog = (vlogId: string) => {
-    if (!window.confirm('确定要删除这段记录吗？删除后该话题的共创人数将减少。')) {
-      return;
-    }
-
-    const vlogToDelete = userVlogs.find(v => v.id === vlogId);
-    if (!vlogToDelete) return;
-
-    setUserVlogs(prev => prev.filter(v => v.id !== vlogId));
-
-    setTopics(prev => prev.map(t =>
-      t.id === vlogToDelete.topicId
-        ? { ...t, joinedCount: Math.max(0, t.joinedCount - 1) }
-        : t
-    ));
-
-    if (selectedTopic && selectedTopic.id === vlogToDelete.topicId) {
-      setSelectedTopic(prev => prev ? { ...prev, joinedCount: Math.max(0, prev.joinedCount - 1) } : null);
-    }
-
-    showToast('记录已删除');
+  const openItem = (item: FeedItem) => {
+    setSelectedItem(item);
+    setScreen('content-detail');
   };
 
-  const handlePostVlog = (topicId: string, source: 'create' | 'join') => {
-    const topic = topics.find(t => t.id === topicId) || selectedTopic;
-    if (!topic) return;
-
-    const newVlog: UserVlog = {
-      id: `vlog-${Date.now()}`,
-      topicId: topic.id,
-      title: topic.title,
-      timestamp: Date.now(),
-      type: source === 'create' ? '发起' : '参与',
-      status: topic.status === 'completed' ? '已成圈' : '待成圈',
-      image: `https://api.dicebear.com/7.x/identicon/svg?seed=${Date.now()}`,
-      likes: '0'
-    };
-
-    setUserVlogs(prev => [newVlog, ...prev]);
-
-    setTopics(prev => prev.map(t =>
-      t.id === topic.id
-        ? { ...t, joinedCount: t.joinedCount + 1 }
-        : t
-    ));
-
-    if (selectedTopic && selectedTopic.id === topic.id) {
-       setSelectedTopic(prev => prev ? { ...prev, joinedCount: prev.joinedCount + 1 } : null);
-    }
+  const openThread = (thread: MessageThread) => {
+    setSelectedThread(thread);
+    setScreen('chat');
   };
-
-  const handleSetScreen = (newScreen: Screen) => {
-    setPrevScreen(screen);
-    if (newScreen !== 'circle') {
-      setIsCirclePureMode(false);
-    }
-    setScreen(newScreen);
-  };
-
-  const blockUser = (name: string) => {
-    setBlockedUserNames(prev => {
-      const next = new Set(prev);
-      next.add(name);
-      return next;
-    });
-    showToast('已加入黑名单');
-  };
-
-  const unblockUser = (name: string) => {
-    setBlockedUserNames(prev => {
-      const next = new Set(prev);
-      next.delete(name);
-      return next;
-    });
-    showToast('已解除拉黑');
-  };
-
-  const dismissHomeGrowthPrompt = () => {
-    setHasShownHomeGrowthPrompt(true);
-  };
-
-  const toggleFavorite = (id: string) => {
-    setSavedTopics(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleLike = (id: string) => {
-    setLikedTopics(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const spotlightTopic = (id: string) => {
-    const cost = 100;
-    if (diamondBalance < cost) {
-      showToast('钻石余额不足，请先充值');
-      return;
-    }
-
-    setDiamondBalance(prev => prev - cost);
-    setSpotlightTopicIds(prev => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    showToast('话题加热成功！已进入热门展示区');
-  };
-
-  const openContentDetail = (item: HomeFeedItem) => {
-    setSelectedContentItem(item);
-    setSelectedTopic(item.topic);
-    handleSetScreen('content-detail');
-  };
-
-// --- Gift Screen ---
-
-const GiftScreen = ({ setScreen, prevScreen, showToast }: { setScreen: (s: Screen) => void, prevScreen: Screen, showToast: (m: string) => void }) => {
-  return (
-    <div className="flex flex-col h-full bg-dark/95 backdrop-blur-3xl pt-8">
-      {/* ... */}
-      <main className="flex-1 p-6 overflow-y-auto no-scrollbar">
-{/* ... */}
-      </main>
-
-      <footer className="p-8 border-t border-white/5 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-indigo-400 rounded-md rotate-45"></div>
-            <span className="font-bold text-sm">628</span>
-            <button onClick={() => setScreen('recharge')} className="text-[10px] text-indigo-400 font-black uppercase tracking-widest ml-1">充值</button>
-         </div>
-         <button
-           onClick={() => {
-             showToast('礼物已送出，稍后将在评论区展示！');
-             setTimeout(() => setScreen(prevScreen), 800);
-           }}
-           className="h-12 px-10 bg-white text-dark rounded-full font-black text-xs uppercase shadow-2xl active:scale-95 transition-transform"
-         >
-            立即赠送
-         </button>
-      </footer>
-    </div>
-  );
-};
 
   const renderScreen = () => {
-    const sS = handleSetScreen;
-    switch (screen) {
-      case 'splash':
-        return <SplashScreen />;
-      case 'login':
-        return <LoginScreen setScreen={sS} showToast={showToast} />;
-      case 'home':
-        return (
-          <HomeScreen
-            setScreen={sS}
-            setSelectedTopic={setSelectedTopic}
-            topics={topics}
-            savedTopicIds={savedTopicIds}
-            toggleFavorite={toggleFavorite}
-            likedTopicIds={likedTopicIds}
-            toggleLike={toggleLike}
-            setSelectedUserName={setSelectedUserName}
-            spotlightTopicIds={spotlightTopicIds}
-            spotlightTopic={spotlightTopic}
-            showToast={showToast}
-            showGrowthPrompt={!hasShownHomeGrowthPrompt}
-            dismissGrowthPrompt={dismissHomeGrowthPrompt}
-            setCircleInitialTopicId={setCircleInitialTopicId}
-            onOpenContent={openContentDetail}
-          />
-        );
-      case 'content-detail':
-        return selectedContentItem ? (
-          <ContentDetailScreen
-            item={selectedContentItem}
-            setScreen={sS}
-            setSelectedUserName={setSelectedUserName}
-            likedTopicIds={likedTopicIds}
-            toggleLike={toggleLike}
-            savedTopicIds={savedTopicIds}
-            toggleFavorite={toggleFavorite}
-            showToast={showToast}
-            setReportType={setReportType}
-            setReportTargetName={setReportTargetName}
-            setCircleInitialTopicInfo={setCircleInitialTopicInfo}
-            spotlightTopic={spotlightTopic}
-            isSpotlighted={spotlightTopicIds.has(selectedContentItem.topic.id)}
-            diamondBalance={diamondBalance}
-          />
-        ) : (
-          <HomeScreen
-            setScreen={sS}
-            setSelectedTopic={setSelectedTopic}
-            topics={topics}
-            savedTopicIds={savedTopicIds}
-            toggleFavorite={toggleFavorite}
-            likedTopicIds={likedTopicIds}
-            toggleLike={toggleLike}
-            setSelectedUserName={setSelectedUserName}
-            spotlightTopicIds={spotlightTopicIds}
-            spotlightTopic={spotlightTopic}
-            showToast={showToast}
-            showGrowthPrompt={!hasShownHomeGrowthPrompt}
-            dismissGrowthPrompt={dismissHomeGrowthPrompt}
-            setCircleInitialTopicId={setCircleInitialTopicId}
-            onOpenContent={openContentDetail}
-          />
-        );
-      case 'topic-detail':
-        return selectedTopic ? (
-          <TopicDetail
-            topic={selectedTopic}
-            setScreen={sS}
-            prevScreen={prevScreen}
-            toggleFavorite={toggleFavorite}
-            isFavorite={savedTopicIds.has(selectedTopic.id)}
-            toggleLike={toggleLike}
-            isLiked={likedTopicIds.has(selectedTopic.id)}
-            setSelectedTopic={setSelectedTopic}
-            setSelectedUserName={setSelectedUserName}
-            showToast={showToast}
-            isSpotlighted={spotlightTopicIds.has(selectedTopic.id)}
-            spotlightTopic={spotlightTopic}
-            userVlogs={userVlogs}
-            deleteVlog={deleteVlog}
-            setCircleInitialTopicInfo={setCircleInitialTopicInfo}
-            setReportTargetName={setReportTargetName}
-            setReportType={setReportType}
-          />
-        ) : (
-          <HomeScreen
-            setScreen={sS}
-            setSelectedTopic={setSelectedTopic}
-            topics={topics}
-            savedTopicIds={savedTopicIds}
-            toggleFavorite={toggleFavorite}
-            likedTopicIds={likedTopicIds}
-            toggleLike={toggleLike}
-            setSelectedUserName={setSelectedUserName}
-            spotlightTopicIds={spotlightTopicIds}
-            spotlightTopic={spotlightTopic}
-            showToast={showToast}
-            showGrowthPrompt={!hasShownHomeGrowthPrompt}
-            dismissGrowthPrompt={dismissHomeGrowthPrompt}
-            setCircleInitialTopicId={setCircleInitialTopicId}
-            onOpenContent={openContentDetail}
-          />
-        );
-      case 'create-circle':
-        return <CreateCircleScreen setScreen={sS} setSelectedTopic={setSelectedTopic} initialTopicInfo={circleInitialTopicInfo} />;
-      case 'text-composer':
-        return <TextComposerScreen setScreen={sS} showToast={showToast} />;
-      case 'album-composer':
-        return <AlbumComposer setScreen={sS} showToast={showToast} source={albumComposerSource} topic={selectedTopic || undefined} prevScreen={prevScreen} />;
-      case 'create-and-shoot':
-        return <CreateAndShootScreen setScreen={sS} showToast={showToast} />;
-      case 'create-success':
-        return <CreateSuccessScreen setScreen={sS} showToast={showToast} />;
-      case 'circle':
-        return (
-          <CircleScreen
-            setScreen={sS}
-            prevScreen={prevScreen}
-            topics={topics}
-            setSelectedTopic={setSelectedTopic}
-            setSelectedUserName={setSelectedUserName}
-            savedTopicIds={savedTopicIds}
-            toggleFavorite={toggleFavorite}
-            likedTopicIds={likedTopicIds}
-            toggleLike={toggleLike}
-            spotlightTopicIds={spotlightTopicIds}
-            spotlightTopic={spotlightTopic}
-            showToast={showToast}
-            diamondBalance={diamondBalance}
-            setDiamondBalance={setDiamondBalance}
-            initialTopicId={circleInitialTopicId}
-            isMyWorkMode={circleIsMyWorkMode}
-            setCircleIsMyWorkMode={setCircleIsMyWorkMode}
-            setCircleInitialTopicId={setCircleInitialTopicId}
-            setCircleInitialTopicInfo={setCircleInitialTopicInfo}
-            isGiftDonorDetailModalOpen={isGiftDonorDetailModalOpen}
-            setIsGiftDonorDetailModalOpen={setIsGiftDonorDetailModalOpen}
-            setCirclePureMode={setIsCirclePureMode}
-            setReportTargetName={setReportTargetName}
-            setReportType={setReportType}
-          />
-        );
-      case 'feedback':
-        return <FeedbackScreen setScreen={sS} />;
-      case 'join':
-        return selectedTopic ? <JoinScreen topic={selectedTopic} setScreen={sS} showToast={showToast} /> : <div className="flex flex-col items-center justify-center h-full text-white/40"><p>请先选择话题</p><button onClick={() => sS('home')} className="mt-4 px-6 py-2 glass-pill">返回首页</button></div>;
-      case 'video-edit':
-        return (
-          <VideoEditScreen
-            topic={selectedTopic || topics[0]}
-            setScreen={sS}
-            showToast={showToast}
-            onPost={handlePostVlog}
-            source={(selectedTopic?.creator === CURRENT_USER.name && (prevScreen === 'join' || prevScreen === 'create-and-shoot')) ? 'create' : 'join'}
-          />
-        );
-      case 'join-success':
-        return <JoinSuccessScreen setScreen={sS} showToast={showToast} />;
-      case 'messages':
-        return <MessagesScreen setScreen={sS} />;
-      case 'me':
-        return (
-          <MeScreen
-            setScreen={sS}
-            profile={profile}
-            diamondBalance={diamondBalance}
-            energyBalance={energyBalance}
-            likedCount={likedTopicIds.size}
-            savedCount={savedTopicIds.size}
-            worksCount={userVlogs.length}
-            setInitialNetworkTab={setInitialNetworkTab}
-            setSelectedTopic={setSelectedTopic}
-            setCircleIsMyWorkMode={setCircleIsMyWorkMode}
-            setCircleInitialTopicId={setCircleInitialTopicId}
-            onOpenContent={openContentDetail}
-          />
-        );
-      case 'my-works':
-        return <MyWorksScreen setScreen={sS} topics={topics} setSelectedTopic={setSelectedTopic} userVlogs={userVlogs} setCircleIsMyWorkMode={setCircleIsMyWorkMode} setCircleInitialTopicId={setCircleInitialTopicId} />;
-      case 'smart-ring':
-        return <SmartRingScreen setScreen={sS} />;
-      case 'shop':
-        return <ShopScreen setScreen={sS} balance={energyBalance} />;
-      case 'recharge':
-        return <RechargeScreen setScreen={sS} balance={diamondBalance} />;
-      case 'settings':
-        return <SettingsScreen setScreen={sS} />;
-      case 'blacklist':
-        return <BlacklistScreen setScreen={sS} blockedUserNames={[...blockedUserNames]} unblockUser={unblockUser} />;
-      case 'friends':
-        return <FriendsScreen setScreen={sS} setSelectedUserName={setSelectedUserName} initialTab={initialNetworkTab} />;
-      case 'network-list':
-        return <NetworkListScreen setScreen={sS} prevScreen={prevScreen} initialTab={initialNetworkTab} userName={selectedUserName} />;
-      case 'liked-topics':
-        return <LikedTopicsScreen setScreen={sS} topics={topics} likedTopicIds={likedTopicIds} setSelectedTopic={setSelectedTopic} />;
-      case 'saved-topics':
-        return <SavedTopicsScreen setScreen={sS} topics={topics} savedTopicIds={savedTopicIds} setSelectedTopic={setSelectedTopic} />;
-      case 'dm':
-        return (
-          <DMScreen
-            setScreen={sS}
-            setSelectedUserName={setSelectedUserName}
-            userName={selectedUserName}
-            showToast={showToast}
-            userRemarks={userRemarks}
-            setUserRemarks={setUserRemarks}
-            blockedUserNames={blockedUserNames}
-            blockUser={blockUser}
-            setReportTargetName={setReportTargetName}
-            setReportType={setReportType}
-          />
-        );
-      case 'relation-invite':
-        return <RelationInviteScreen setScreen={sS} />;
-      case 'relation-sent':
-        return <RelationSentScreen setScreen={sS} />;
-      case 'relation-review':
-        return <RelationReviewScreen setScreen={sS} showToast={showToast} />;
-      case 'user-profile':
-        return (
-          <UserProfileScreen
-            setScreen={sS}
-            userName={selectedUserName}
-            prevScreen={prevScreen}
-            showToast={showToast}
-            setInitialNetworkTab={setInitialNetworkTab}
-            userRemarks={userRemarks}
-            setUserRemarks={setUserRemarks}
-            blockedUserNames={blockedUserNames}
-            blockUser={blockUser}
-            setReportTargetName={setReportTargetName}
-          />
-        );
-      case 'report-user':
-        return <ReportUserScreen setScreen={sS} targetName={reportTargetName} reportType={reportType} showToast={showToast} />;
-      case 'report-success':
-        return <ReportSuccessScreen setScreen={sS} targetName={reportTargetName} />;
-      case 'personal-profile':
-        return <PersonalProfileScreen setScreen={sS} profile={profile} setProfile={setProfile} showToast={showToast} />;
-      case 'couple-space':
-        return <CoupleSpaceScreen setScreen={sS} showToast={showToast} setCoupleDetail={setCoupleDetail} />;
-      case 'couple-date-schedule':
-        return <CoupleModuleScreen setScreen={sS} type="date" setCoupleDetail={setCoupleDetail} />;
-      case 'couple-travel-plan':
-        return <CoupleModuleScreen setScreen={sS} type="travel" setCoupleDetail={setCoupleDetail} />;
-      case 'couple-bridge':
-        return <CoupleModuleScreen setScreen={sS} type="bridge" setCoupleDetail={setCoupleDetail} />;
-      case 'couple-marriage-map':
-        return <CoupleModuleScreen setScreen={sS} type="marriage" setCoupleDetail={setCoupleDetail} />;
-      case 'couple-detail':
-        return <CoupleDetailScreen setScreen={sS} detail={coupleDetail} showToast={showToast} />;
-      case 'gift':
-        return <GiftScreen setScreen={sS} prevScreen={prevScreen} showToast={showToast} />;
-      case 'energy-detail':
-        return <EnergyDetailScreen setScreen={sS} prevScreen={prevScreen} balance={energyBalance} />;
-      case 'account-profile':
-        return <AccountProfileScreen setScreen={sS} />;
-      case 'privacy-policy':
-        return <PrivacyPolicyScreen setScreen={sS} />;
-      case 'notification-settings':
-        return <NotificationSettingsScreen setScreen={sS} />;
-      default:
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-white/40 space-y-4">
-            <Settings className="animate-spin-slow" size={48} />
-            <p className="font-black uppercase tracking-widest text-sm">功能开发中... ({screen})</p>
-            <button onClick={() => sS('home')} className="px-6 py-2 glass-pill rounded-lg text-white">返回首页</button>
-          </div>
-        );
-    }
+    if (screen === 'home') return <HomeScreen openItem={openItem} />;
+    if (screen === 'smart-ring') return <SmartRingPlaceholder />;
+    if (screen === 'messages') return <MessagesScreen openThread={openThread} />;
+    if (screen === 'me') return <MeScreen profile={profile} setScreen={setScreen} />;
+    if (screen === 'content-detail' && selectedItem) return <ContentDetailScreen item={selectedItem} setScreen={setScreen} />;
+    if (screen === 'chat' && selectedThread) return <ChatScreen thread={selectedThread} setScreen={setScreen} />;
+    if (screen === 'reserved-space') return <ReservedSpacePlaceholder setScreen={setScreen} />;
+    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} setScreen={setScreen} showToast={showToast} />;
+    if (screen === 'settings') return <SettingsScreen setScreen={setScreen} />;
+    return <HomeScreen openItem={openItem} />;
   };
-  const isLightShell = screen === 'login' || screen === 'messages' || screen === 'me';
+
+  if (isAdminRoute) {
+    return <AdminAppShell />;
+  }
 
   return (
-    <div className={`max-w-[402px] mx-auto h-[874px] overflow-hidden relative shadow-[0_0_120px_rgba(0,0,0,0.15)] border-[8px] border-[#f5f5f5] rounded-[44px] font-sans my-4 ${
-      isLightShell ? 'bg-[#f8f4ed]' : 'bg-dark'
-    }`}>
-      {/* Simulated Status Bar / Dynamic Island */}
-      <div className="absolute top-0 inset-x-0 h-10 z-[100] flex justify-between items-center px-10 pointer-events-none">
-        <span className={`text-[13px] font-black tracking-tight mt-3 ${isLightShell ? 'text-[#4f3d2d]' : 'text-white'}`}>9:41</span>
-        <div className="w-[110px] h-[30px] bg-dark rounded-full mt-3 shadow-2xl border border-black/5 flex items-center justify-center gap-1.5 overflow-hidden">
-           <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
-           <div className="w-6 h-0.5 bg-white/20 rounded-full"></div>
-        </div>
-        <div className="flex gap-1.5 items-center mt-3 scale-90">
-          <div className={`w-5 h-2.5 rounded-[3px] relative overflow-hidden ring-[1px] ${
-            isLightShell ? 'bg-[#ded2c4] ring-[#cdbdab]' : 'bg-dark/20 ring-black/10'
-          }`}>
-             <div className={`absolute inset-y-0 left-0 w-3/4 ${isLightShell ? 'bg-[#4f3d2d]' : 'bg-dark'}`}></div>
-          </div>
+    <div className="mx-auto my-4 h-[874px] max-w-[402px] overflow-hidden rounded-[44px] border-[8px] border-[#f5f5f5] bg-[#f7f3ec] font-sans shadow-[0_0_120px_rgba(0,0,0,0.15)]">
+      <div className="absolute top-0 inset-x-0 z-[100] mx-auto flex h-10 max-w-[402px] items-center justify-between px-10 pointer-events-none">
+        <span className="mt-3 text-[13px] font-black tracking-tight text-[#4f3d2d]">9:41</span>
+        <div className="mt-3 h-[30px] w-[110px] rounded-full bg-[#111] shadow-2xl" />
+        <div className="mt-3 h-2.5 w-5 rounded-[3px] bg-[#ded2c4] ring-1 ring-[#cdbdab]">
+          <div className="h-full w-3/4 rounded-[3px] bg-[#4f3d2d]" />
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={screen + (selectedTopic?.id || '')}
-          initial={{ opacity: 0, scale: screen === 'topic-detail' ? 0.96 : 1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: screen === 'topic-detail' ? 1.04 : 0.98 }}
-          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-          className="h-full relative flex flex-col"
-        >
-          {renderScreen()}
-        </motion.div>
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {toast && (
+      <div className="relative h-full">
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[150] px-6 py-4 bg-black/80 backdrop-blur-md text-white font-bold text-xs shadow-2xl border border-white/10 rounded-full whitespace-nowrap"
+            key={screen}
+            initial={{ opacity: 0, scale: 0.985 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.985 }}
+            transition={{ duration: 0.22 }}
+            className="h-full"
           >
-            {toast}
+            {renderScreen()}
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
 
-      <AnimatePresence>
-        {isCreateMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsCreateMenuOpen(false)}
-            className="absolute inset-0 z-[120] flex flex-col justify-end bg-black/30 backdrop-blur-sm"
-          >
+        {visibleBottomNav && <BottomNav active={screen} setScreen={setScreen} />}
+
+        <AnimatePresence>
+          {toast && (
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-              onClick={(event) => event.stopPropagation()}
-              className="overflow-hidden rounded-t-[18px] bg-white text-center text-[#2f261d] shadow-[0_-18px_44px_rgba(47,38,29,0.16)]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute left-1/2 top-1/2 z-[150] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-white/10 bg-black/80 px-6 py-4 text-xs font-bold text-white shadow-2xl backdrop-blur-md"
             >
-              <button
-                onClick={() => {
-                  setAlbumComposerSource('create');
-                  setIsCreateMenuOpen(false);
-                  handleSetScreen('album-composer');
-                }}
-                className="flex h-[76px] w-full items-center justify-center border-b border-[#eee4d8] text-[21px] font-medium active:bg-[#f7f3ec]"
-              >
-                从相册选择
-              </button>
-              <button
-                onClick={() => {
-                  setIsCreateMenuOpen(false);
-                  handleSetScreen('text-composer');
-                }}
-                className="flex h-[76px] w-full items-center justify-center text-[21px] font-medium active:bg-[#f7f3ec]"
-              >
-                写文字
-              </button>
-              <div className="h-2 bg-[#f3f3f3]" />
-              <button
-                onClick={() => setIsCreateMenuOpen(false)}
-                className="flex h-[70px] w-full items-center justify-center text-[21px] font-medium active:bg-[#f7f3ec]"
-              >
-                取消
-              </button>
+              {toast}
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {(screen === 'home' || screen === 'circle' || screen === 'messages' || screen === 'me') && !(screen === 'circle' && isCirclePureMode) && (
-        <>
-          <BottomNav
-            active={screen}
-            setScreen={handleSetScreen}
-            onPlusClick={() => {
-              setIsCreateMenuOpen(true);
-            }}
-          />
-        </>
-      )}
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
-
-// --- Splash Screen ---
-
-const SplashScreen = () => {
-  return (
-    <div className="flex flex-col h-full bg-dark items-center justify-center relative overflow-hidden">
-      {/* Background Ambience */}
-      <div className="absolute top-0 left-0 w-full h-full">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#FFD700]/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#FFD700]/5 blur-[150px] rounded-full" />
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center">
-        <Logo size={100} className="mb-10" />
-
-        <div className="flex flex-col items-center">
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col items-center space-y-4"
-          >
-            <h2 className="w-full px-4 text-center text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-normal whitespace-nowrap">让相信真爱的人聚在一起</h2>
-            <div className="flex items-center gap-3">
-              <div className="h-[1px] w-8 bg-[#D4AF37]/30" />
-              <div className="h-[1px] w-8 bg-[#D4AF37]/30" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 1.5 }}
-            className="mt-12"
-          >
-            <p className="text-[9px] font-light text-white/20 tracking-[0.4em] uppercase">DR Moments Journal · Premium Edition</p>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Elegant Progress Indicator */}
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-2">
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0.2 }}
-            animate={{ opacity: [0.2, 1, 0.2] }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut"
-            }}
-            className="w-1.5 h-1.5 rounded-full bg-[#FFD700]"
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// --- Smart Ring Screen ---
-
-const SmartRingScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">智能戒指</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <main className="flex-1 p-6 space-y-6 overflow-y-auto no-scrollbar pb-12">
-        <section className="bg-gradient-to-br from-[#fff7eb] via-white to-[#f6ede3] p-8 rounded-[24px] border border-[#f0dfc0] flex items-center justify-between shadow-xl">
-           <div className="space-y-2 relative z-10">
-              <p className="text-xs font-black uppercase text-[#b4834a] tracking-widest">DR Ring Pro</p>
-              <h3 className="text-6xl font-bold leading-none text-[#2f261d]">86</h3>
-              <p className="text-[#8f7f6d] text-xs italic">今日状态良好 · 已佩戴 7.5h</p>
-           </div>
-           <img src="https://images.unsplash.com/photo-1611078440058-20412803b9b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80" alt="Ring" className="w-24 h-24 rounded-full border-[10px] border-gold shadow-[0_0_40px_rgba(214,178,126,0.1)] relative z-10 object-cover" />
-        </section>
-
-        <section className="grid grid-cols-3 gap-3">
-           {[
-             { label: '准备度', val: '86', desc: '稳定', tone: 'red' },
-             { label: '睡眠', val: '82', desc: '1h 深睡', tone: 'indigo' },
-             { label: '活动', val: '74', desc: '1.8k 步', tone: 'emerald' },
-           ].map(item => (
-             <div key={item.label} className={`p-4 space-y-2 shadow-lg ${lightSurfaceCard}`}>
-                <p className="text-[10px] font-black uppercase text-[#b0a08e] tracking-widest">{item.label}</p>
-                <p className="text-xl font-bold text-[#2f261d]">{item.val}</p>
-                <p className="text-[10px] text-[#8f7f6d] truncate italic">{item.desc}</p>
-             </div>
-           ))}
-        </section>
-
-        <section className={`p-6 space-y-6 shadow-xl ${lightSurfaceCard}`}>
-           <div className="flex justify-between items-center">
-              <h4 className="font-bold text-sm text-[#2f261d]">心率趋势 (24h)</h4>
-              <span className="text-[10px] font-black text-[#b0a08e] uppercase tracking-widest underline decoration-green-500/30">同步正常</span>
-           </div>
-           <div className="h-24 flex items-end gap-2 px-1">
-              {[40, 60, 45, 80, 55, 70, 50, 65, 40].map((h, i) => (
-                <div key={i} className="flex-1 bg-gradient-to-t from-gold/5 via-gold/10 to-gold/40 rounded-t-full" style={{ height: `${h}%` }}></div>
-              ))}
-           </div>
-           <div className="pt-4 border-t border-[#eadfce] flex justify-between">
-              <div>
-                 <p className="text-[10px] font-black uppercase text-[#b0a08e]">静息心率</p>
-                 <p className="text-lg font-bold text-[#2f261d]">62 bpm</p>
-              </div>
-              <div className="text-right">
-                 <p className="text-[10px] font-black uppercase text-[#b0a08e]">HRV 变异率</p>
-                 <p className="text-lg font-bold text-[#2f261d]">48 ms</p>
-              </div>
-           </div>
-        </section>
-
-        <div className="p-4 bg-white/82 rounded-[18px] border border-[#eadfce] flex gap-4 items-center shadow-sm">
-           <div className="w-10 h-10 bg-[#fff1dc] rounded-lg flex items-center justify-center text-[#b4834a]">
-              <Bell size={20} />
-           </div>
-           <div className="flex-1">
-              <p className="text-sm font-bold text-[#2f261d]">今晚建议早点休息</p>
-              <p className="text-xs text-[#8f7f6d] mt-0.5 leading-relaxed italic">体温较昨日略高，身体处于恢复期。</p>
-           </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// --- DM (Chat) Screen ---
-
-const DMScreen = ({
-  setScreen,
-  setSelectedUserName,
-  userName,
-  showToast,
-  userRemarks,
-  setUserRemarks,
-  blockedUserNames,
-  blockUser,
-  setReportTargetName,
-  setReportType,
-}: {
-  setScreen: (s: Screen) => void,
-  setSelectedUserName: (name: string) => void,
-  userName: string,
-  showToast: (m: string) => void,
-  userRemarks: Record<string, string>,
-  setUserRemarks: React.Dispatch<React.SetStateAction<Record<string, string>>>,
-  blockedUserNames: Set<string>,
-  blockUser: (name: string) => void,
-  setReportTargetName: (name: string) => void,
-  setReportType: (type: 'account' | 'video') => void,
-}) => {
-  const [msg, setMsg] = useState('');
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
-  const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [isGiftPanelOpen, setIsGiftPanelOpen] = useState(false);
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isFollowed, setIsFollowed] = useState(true);
-  const [isRemarkOpen, setIsRemarkOpen] = useState(false);
-  const [remarkDraft, setRemarkDraft] = useState(userRemarks[userName] || '');
-  const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false);
-  const emojis = ['😀', '😂', '😍', '🥰', '👍', '🔥', '🎁', '💎', '❤️', '👏', '😎', '😭'];
-  const remarkName = userRemarks[userName];
-  const isBlocked = blockedUserNames.has(userName);
-  const [messages, setMessages] = useState([
-    { id: 1, text: '我刚拍了一段 3 秒片段，顺手把声音也录进去了。', sender: 'other', time: '09:41' },
-    { id: 2, text: '我这边也补好了，今天的城市声音很完整。', sender: 'me', time: '09:42' },
-  ]);
-
-  const handleSend = () => {
-    if (!msg.trim()) return;
-    const newMsg = {
-      id: Date.now(),
-      text: msg,
-      sender: 'me',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages([...messages, newMsg]);
-    setMsg('');
-    setIsEmojiOpen(false);
-  };
-
-  const handleImageSend = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        text: '图片',
-        image: event.target?.result as string,
-        sender: 'me',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  const sendVoiceMessage = () => {
-    setMessages(prev => [...prev, {
-      id: Date.now(),
-      text: '语音 0:08',
-      voice: true,
-      sender: 'me',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }]);
-  };
-
-  const finishRecording = () => {
-    if (!isRecording) return;
-    setIsRecording(false);
-    sendVoiceMessage();
-  };
-
-  const addEmoji = (emoji: string) => {
-    setIsVoiceMode(false);
-    setMsg(prev => `${prev}${emoji}`);
-  };
-  const saveRemark = () => {
-    const nextRemark = remarkDraft.trim();
-    setUserRemarks(prev => {
-      const next = { ...prev };
-      if (nextRemark) next[userName] = nextRemark;
-      else delete next[userName];
-      return next;
-    });
-    setIsRemarkOpen(false);
-    showToast(nextRemark ? '备注已保存' : '备注已清除');
-  };
-  const handleFollowToggle = () => {
-    setIsFollowed(prev => {
-      const next = !prev;
-      showToast(next ? '已关注' : '已取消关注');
-      return next;
-    });
-    setIsMoreOpen(false);
-  };
-  const handleReport = () => {
-    setReportType('account');
-    setReportTargetName(userName);
-    setIsMoreOpen(false);
-    setScreen('report-user');
-  };
-  const handleBlock = () => {
-    blockUser(userName);
-    setIsBlockConfirmOpen(false);
-    setIsMoreOpen(false);
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-[#f7f7f7] pt-8 text-[#161616] relative overflow-hidden">
-      <header className="px-5 py-4 flex items-center justify-between sticky top-0 bg-[#f7f7f7]/96 backdrop-blur-xl z-20">
-        <button onClick={() => setScreen('messages')} className="w-10 h-10 rounded-full flex items-center justify-center bg-white text-[#161616] shadow-sm active:scale-95 transition-transform">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="text-center group active:scale-95 transition-transform cursor-pointer" onClick={() => {
-            setSelectedUserName(userName);
-            setScreen('user-profile');
-        }}>
-           <h2 className="font-black text-[#161616] text-base">{remarkName || userName}</h2>
-        </div>
-        <button onClick={() => setIsMoreOpen(true)} className="w-10 h-10 rounded-full flex items-center justify-center bg-white text-[#161616] shadow-sm active:scale-95 transition-transform" aria-label="聊天更多操作">
-          <MoreHorizontal size={20} />
-        </button>
-      </header>
-
-      <main className="flex-1 px-4 pt-3 space-y-5 overflow-y-auto no-scrollbar pb-28 bg-[#f7f7f7]">
-         <div className="flex justify-center">
-            <span className="px-3 py-1 rounded-full text-[11px] font-bold text-[#a1a1a1]">09:41</span>
-         </div>
-
-         {messages.map((m) => (
-           <div key={m.id} className={`flex gap-2.5 ${m.sender === 'me' ? 'flex-row-reverse' : 'flex-row'} max-w-full animate-in fade-in slide-in-from-bottom-2`}>
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${m.sender === 'me' ? 'Dear6317B6SG' : userName}`} alt="" className="w-9 h-9 rounded-full bg-white shrink-0 object-cover" />
-              <div className={`max-w-[72%] px-3.5 py-2.5 shadow-sm space-y-1.5 ${
-                m.sender === 'me'
-                ? 'bg-[#FE2C55] rounded-[14px] rounded-tr-[4px] text-white'
-                : 'bg-white rounded-[14px] rounded-tl-[4px] text-[#161616]'
-              }`}>
-                 {(m as any).image ? (
-                   <img src={(m as any).image} alt="发送的图片" className="max-w-[180px] rounded-xl object-cover" />
-                 ) : (m as any).voice ? (
-                   <div className="flex items-center gap-2 min-w-[120px]">
-                     <Mic size={15} />
-                     <span className="text-xs font-black">{m.text}</span>
-                   </div>
-                 ) : (
-                   <p className="text-[14px] leading-relaxed font-medium">{m.text}</p>
-                 )}
-                 <span className={`text-[9px] font-bold block text-right ${m.sender === 'me' ? 'text-white/65' : 'text-[#b8b8b8]'}`}>
-                   {m.time}
-                 </span>
-              </div>
-           </div>
-         ))}
-
-         <div className="mx-auto w-full rounded-[14px] bg-white px-4 py-3 shadow-sm flex items-center justify-between gap-3">
-            <div className="min-w-0">
-               <p className="text-[11px] font-black text-[#FE2C55]">共创动态</p>
-               <h4 className="mt-0.5 text-sm font-black text-[#161616] truncate">今天的城市声音</h4>
-            </div>
-            <button onClick={() => setScreen('topic-detail')} className="h-8 px-3 bg-[#f5f5f5] text-[#161616] font-black text-[10px] rounded-full shrink-0">
-               查看
-            </button>
-         </div>
-
-
-      </main>
-
-      <div className="absolute inset-x-0 bottom-0 z-50 bg-[#f7f7f7]/96 backdrop-blur-xl px-3 pt-2 pb-6">
-         <div className="rounded-[20px] bg-white px-2 pb-2 pt-2 shadow-[0_8px_28px_rgba(0,0,0,0.08)]">
-           <div className="flex h-11 items-center gap-2">
-            {isVoiceMode ? (
-              <button
-                onPointerDown={() => setIsRecording(true)}
-                onPointerUp={finishRecording}
-                onPointerLeave={() => setIsRecording(false)}
-                className={`flex-1 h-9 rounded-full text-sm font-black transition-all ${isRecording ? 'bg-[#FE2C55] text-white scale-[0.98]' : 'bg-[#f4f4f4] text-[#161616]'}`}
-              >
-                {isRecording ? '松开发送' : '按住说话'}
-              </button>
-            ) : (
-              <input
-                className="flex-1 bg-[#f4f4f4] h-9 rounded-full px-4 text-sm font-medium placeholder:text-[#a5a5a5] outline-none text-[#161616]"
-                placeholder={`想对${remarkName || userName}说点什么...`}
-                value={msg}
-                onChange={(e) => setMsg(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              />
-            )}
-            <button
-              onClick={handleSend}
-              disabled={!msg.trim()}
-              className={`h-9 min-w-[58px] px-4 font-black rounded-full text-xs whitespace-nowrap transition-all ${
-                msg.trim() ? 'bg-[#FE2C55] text-white' : 'bg-[#efefef] text-[#b7b7b7]'
-              }`}
-            >
-               发送
-            </button>
-           </div>
-
-           <div className="mt-2 flex items-center justify-around border-t border-[#f1eee9] pt-2">
-             {[
-               { label: isVoiceMode ? '键盘' : '语音', icon: Mic, active: isVoiceMode, action: () => { setIsVoiceMode(prev => !prev); setIsEmojiOpen(false); setIsGiftPanelOpen(false); } },
-               { label: '表情', icon: Smile, active: isEmojiOpen, action: () => { setIsEmojiOpen(prev => !prev); setIsVoiceMode(false); setIsGiftPanelOpen(false); } },
-               { label: '图片', icon: ImageIcon, active: false, action: undefined },
-               { label: '礼物', icon: Gift, active: isGiftPanelOpen, action: () => { setIsGiftPanelOpen(prev => !prev); setIsEmojiOpen(false); setIsVoiceMode(false); } },
-             ].map((tool) => (
-               tool.label === '图片' ? (
-                 <label key={tool.label} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[#7d6f61] active:scale-90 transition-transform" aria-label={tool.label}>
-                   <tool.icon size={22} strokeWidth={2.3} />
-                   <input type="file" accept="image/*" className="hidden" onChange={handleImageSend} />
-                 </label>
-               ) : (
-                 <button
-                   key={tool.label}
-                   onClick={tool.action}
-                   aria-label={tool.label}
-                   className={`flex h-10 w-10 items-center justify-center rounded-full active:scale-90 transition-all ${
-                     tool.active ? 'bg-[#2f261d]/8 text-[#2f261d]' : 'text-[#7d6f61]'
-                   }`}
-                 >
-                   <tool.icon size={22} strokeWidth={2.3} />
-                 </button>
-               )
-             ))}
-           </div>
-         </div>
-         {isEmojiOpen && (
-           <div className="mt-2 rounded-[16px] bg-white p-3 shadow-[0_8px_28px_rgba(0,0,0,0.08)] grid grid-cols-6 gap-2">
-             {emojis.map((emoji) => (
-               <button
-                 key={emoji}
-                 onClick={() => addEmoji(emoji)}
-                 className="h-10 rounded-xl bg-[#f7f7f7] text-xl active:scale-95 transition-transform"
-               >
-                 {emoji}
-               </button>
-             ))}
-           </div>
-         )}
-         {isGiftPanelOpen && (
-           <div className="mt-2 grid grid-cols-4 gap-2 rounded-[16px] bg-white p-3 shadow-[0_8px_28px_rgba(0,0,0,0.08)]">
-             {GIFTS.slice(0, 4).map((gift) => (
-               <button
-                 key={gift.name}
-                 onClick={() => {
-                   setMessages(prev => [...prev, {
-                     id: Date.now(),
-                     text: `送出 ${gift.name}`,
-                     sender: 'me',
-                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                   }]);
-                   setIsGiftPanelOpen(false);
-                   showToast(`已送出${gift.name}`);
-                 }}
-                 className="rounded-xl bg-[#fffaf4] px-2 py-3 text-center active:scale-95 transition-transform"
-               >
-                 <span className="block text-2xl leading-none">{gift.icon}</span>
-                 <span className="mt-1 block truncate text-[9px] font-black text-[#2f261d]">{gift.name}</span>
-               </button>
-             ))}
-           </div>
-         )}
-      </div>
-
-      <AnimatePresence>
-        {isMoreOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[80] flex flex-col justify-end bg-black/28 backdrop-blur-sm"
-            onClick={() => setIsMoreOpen(false)}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 260 }}
-              className="rounded-t-[32px] bg-[#fffaf5] px-5 pb-8 pt-3 shadow-[0_-18px_50px_rgba(73,55,39,0.16)]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-[#eadfce]" />
-              <div className="mb-4 flex items-center gap-3">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`} alt="" className="h-11 w-11 rounded-xl bg-[#f6ede3]" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-[#2f261d]">{remarkName || userName}</p>
-                  {remarkName && <p className="text-[10px] font-black uppercase tracking-widest text-[#a79584]">原名 {userName}</p>}
-                </div>
-              </div>
-              {[
-                { label: '设置备注', icon: Pencil, action: () => { setIsMoreOpen(false); setRemarkDraft(userRemarks[userName] || ''); setIsRemarkOpen(true); } },
-                { label: isFollowed ? '取消关注' : '关注', icon: UserPlus, action: handleFollowToggle },
-                { label: '举报', icon: AlertTriangle, action: handleReport, danger: true },
-                { label: '拉黑', icon: Lock, action: () => setIsBlockConfirmOpen(true), danger: true },
-              ].map(item => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className={`flex w-full items-center gap-3 rounded-[16px] px-4 py-3.5 text-left active:bg-[#f6ede3] transition-colors ${
-                    item.danger ? 'text-rose-500' : 'text-[#2f261d]'
-                  }`}
-                >
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${item.danger ? 'bg-rose-50' : 'bg-[#f6ede3]'}`}>
-                    <item.icon size={17} />
-                  </span>
-                  <span className="text-sm font-black">{item.label}</span>
-                </button>
-              ))}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isRemarkOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[85] flex items-center justify-center bg-black/30 px-6 backdrop-blur-sm"
-            onClick={() => setIsRemarkOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.94, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 12 }}
-              className="w-full rounded-[20px] bg-[#fffaf5] p-5 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-black text-[#2f261d]">设置备注</h3>
-              <p className="mt-1 text-xs font-bold text-[#8f7f6d]">给 {userName} 一个你更容易识别的名字。</p>
-              <input
-                value={remarkDraft}
-                onChange={(e) => setRemarkDraft(e.target.value)}
-                maxLength={16}
-                placeholder="输入备注名"
-                className="mt-5 h-12 w-full rounded-xl bg-[#f8f1e8] px-4 text-sm font-black text-[#2f261d] outline-none"
-              />
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button onClick={() => setIsRemarkOpen(false)} className="h-11 rounded-xl bg-white text-sm font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">取消</button>
-                <button onClick={saveRemark} className="h-11 rounded-xl bg-[#2f261d] text-sm font-black text-white active:scale-95 transition-transform">保存</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isBlockConfirmOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[90] flex items-end bg-black/32 backdrop-blur-sm"
-            onClick={() => setIsBlockConfirmOpen(false)}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="w-full rounded-t-[32px] bg-[#fffaf5] px-6 pb-8 pt-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-500">
-                <AlertTriangle size={26} />
-              </div>
-              <h3 className="text-center text-xl font-black text-[#2f261d]">确认拉黑 {remarkName || userName}？</h3>
-              <p className="mx-auto mt-3 max-w-[280px] text-center text-xs font-bold leading-relaxed text-[#8f7f6d]">
-                拉黑后，对方将无法与你私信互动，也会进入设置中的黑名单列表。
-              </p>
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button onClick={() => setIsBlockConfirmOpen(false)} className="h-12 rounded-xl bg-white text-sm font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">再想想</button>
-                <button onClick={handleBlock} className="h-12 rounded-xl bg-rose-500 text-sm font-black text-white active:scale-95 transition-transform">确认拉黑</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// --- Shop Screen ---
-
-const ShopScreen = ({ setScreen, balance }: { setScreen: (s: Screen) => void, balance: number }) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">DR商城</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <main className="flex-1 p-6 space-y-6 overflow-y-auto no-scrollbar pb-24">
-        <section className="p-8 bg-gradient-to-br from-white via-[#fffaf3] to-[#f6ede3] rounded-[24px] border border-[#eadfce] space-y-3 relative overflow-hidden shadow-xl">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100 blur-3xl -mr-16 -mt-16"></div>
-           <p className="text-xs font-black uppercase text-indigo-500 tracking-widest relative z-10">我的积分余额</p>
-           <h1 className="text-6xl font-bold relative z-10 text-[#2f261d]">{balance.toLocaleString()}</h1>
-           <p className="text-[#8f7f6d] text-xs relative z-10 leading-relaxed italic">
-             积分由共创礼物及动态获得，仅限商城内实物或虚拟权益兑换。
-           </p>
-        </section>
-
-        <div className="grid grid-cols-2 gap-4">
-           {SHOP_ITEMS.map(item => (
-              <div key={item.name} className={`p-4 space-y-4 shadow-lg group active:scale-95 transition-transform ${lightSurfaceCard}`}>
-                 <div className="aspect-square rounded-xl bg-[#f6ede3] flex items-center justify-center group-hover:bg-indigo-50 transition-colors overflow-hidden">
-                    <img src={`https://images.unsplash.com/photo-${item.price === '680' ? '1542291026-7eec264c27ff' : item.price === '320' ? '1610421255869-7c1bd36122d7' : item.price === '880' ? '1505740420928-5e560c06d30e' : '1523275335684-37898b6baf30'}?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80`} alt={item.name} className="w-full h-full object-cover mix-blend-overlay opacity-80 group-hover:opacity-100 transition-opacity" />
-                 </div>
-                 <div>
-                    <h4 className="font-bold text-sm text-[#2f261d]">{item.name}</h4>
-                    <p className="text-[#b4834a] text-lg font-bold mt-1">{item.price}<span className="text-[10px] text-[#b0a08e] ml-1 uppercase font-black">{item.unit}</span></p>
-                 </div>
-                 <button className="w-full h-10 bg-white border border-[#eadfce] rounded-lg text-[10px] font-black uppercase text-[#8f7f6d] hover:text-[#2f261d] transition-all">
-                    立即兑换
-                 </button>
-              </div>
-           ))}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// --- Recharge Screen ---
-
-const RechargeScreen = ({ setScreen, balance }: { setScreen: (s: Screen) => void, balance: number }) => {
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">钻石充值</h2>
-        <div className="w-10 h-10"></div>
-      </header>
-
-      <main className="flex-1 p-6 space-y-8 overflow-y-auto no-scrollbar pb-24">
-        <div className="space-y-3">
-           <p className="text-xs font-black text-[#8f7f6d] tracking-widest uppercase">账户可用余额</p>
-           <h1 className="text-6xl font-bold flex items-center gap-4 text-[#2f261d]">
-              {balance.toLocaleString()}
-              <div className="w-10 h-10 bg-[#fff1dc] border border-[#f0dfc0] rounded-lg flex items-center justify-center rotate-45 shadow-lg"></div>
-           </h1>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { amount: '68', label: '6 钻石', price: '6.00' },
-            { amount: '128', label: '12+1 钻石', price: '12.00', bonus: true },
-            { amount: '328', label: '32+5 钻石', price: '32.00', bonus: true },
-            { amount: '648', label: '64+12 钻石', price: '64.00', bonus: true },
-          ].map(opt => (
-            <div key={opt.amount} className={`p-6 rounded-[24px] border active:scale-95 transition-all cursor-pointer shadow-lg ${opt.bonus ? 'bg-[#fff7eb] border-[#f0dfc0]' : 'bg-white/82 border-[#eadfce]'}`}>
-               <p className={`text-sm font-bold ${opt.bonus ? 'text-[#b4834a]' : 'text-[#8f7f6d]'}`}>{opt.label}</p>
-               <h3 className="text-3xl font-bold mt-2 text-[#2f261d]">{opt.price}</h3>
-               {opt.bonus && <span className="inline-block mt-4 px-2 py-0.5 bg-gold text-dark text-[8px] font-black rounded uppercase">赠送礼包</span>}
-            </div>
-          ))}
-        </div>
-
-        <div className="p-6 bg-white/82 rounded-[24px] border border-[#eadfce] space-y-4 shadow-sm">
-           <h4 className="font-bold text-sm text-[#2f261d]">充值说明</h4>
-           <p className="text-xs text-[#8f7f6d] leading-relaxed italic">
-             钻石是 DR圈内的通用货币，可用于礼物赠送、道具购买等。一旦充值暂不支持退款，请理性参与共创。
-           </p>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// --- Relation Invite Screen ---
-
-// --- Relation Invite Screen ---
-
-const RelationInviteScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  const [selectedType, setSelectedType] = useState('真爱');
-  const [targetId, setTargetId] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-
-  const relations = [
-    { title: '真爱', desc: '一对一专属关系，永不落幕', color: '#f43f5e', icon: Heart, badge: 'Soulmate' },
-    { title: '闺蜜', desc: '亲密无间的挚友（最多 3 个）', color: '#6366f1', icon: Sparkles, badge: 'BFF' },
-    { title: '兄弟', desc: '肝胆相照的兄弟（最多 3 个）', color: '#10b981', icon: Zap, badge: 'Brother' },
-  ];
-
-  return (
-    <div className="flex flex-col h-full bg-[#050505] overflow-hidden relative">
-      {/* Dynamic Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%] opacity-30 blur-[120px] bg-gradient-to-br from-rose-500/20 via-indigo-500/10 to-transparent"></div>
-        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-      </div>
-
-      <header className="p-6 flex items-center justify-between relative z-20">
-        <button onClick={() => setScreen('me')} className="w-12 h-12 glass-pill rounded-xl flex items-center justify-center border border-white/5 active:scale-90 transition-transform">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <div className="text-center">
-          <h2 className="font-bold text-white tracking-widest uppercase text-xs">星轨绑定</h2>
-          <div className="h-0.5 w-4 bg-gold mx-auto mt-1 rounded-full opacity-50"></div>
-        </div>
-        <button className="w-12 h-12 glass-pill rounded-xl flex items-center justify-center border border-white/5 opacity-50">
-          <HelpCircle size={20} className="text-white" />
-        </button>
-      </header>
-
-      <main className="flex-1 p-6 space-y-10 overflow-y-auto no-scrollbar relative z-10">
-        {/* Connection Ritual Header */}
-        <section className="text-center space-y-4 pt-4">
-          <div className="relative inline-block">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-[-20px] border border-dashed border-white/10 rounded-full"
-            />
-            <motion.div
-              animate={{ rotate: -360 }}
-              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-[-10px] border border-dashed border-gold/20 rounded-full"
-            />
-            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 p-1 relative z-10 flex items-center justify-center overflow-hidden">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Wesley" className="w-full h-full object-cover rounded-full" alt="Me" />
-              <div className="absolute inset-0 bg-gradient-to-t from-dark/60 to-transparent"></div>
-            </div>
-            <motion.div
-              initial={{ x: 40, opacity: 0 }}
-              animate={{ x: 60, opacity: 1 }}
-              className="absolute top-1/2 -right-8 flex gap-1 items-center"
-            >
-              {[1, 2, 3].map(i => (
-                <motion.div
-                  key={i}
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
-                  transition={{ delay: i * 0.2, duration: 1.5, repeat: Infinity }}
-                  className="w-1.5 h-1.5 bg-gold rounded-full shadow-[0_0_8px_gold]"
-                />
-              ))}
-            </motion.div>
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-black text-white italic tracking-tight">开启关系共鸣</h1>
-            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">The Stellar Alignment Ritual</p>
-          </div>
-        </section>
-
-        {/* Relation Selector */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <h4 className="text-[10px] font-black uppercase text-white/30 tracking-widest">选择共鸣类型</h4>
-            <span className="text-[10px] font-black text-gold/40 italic">Select Frequency</span>
-          </div>
-
-          <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 -mx-6 px-6">
-            {relations.map(item => (
-              <motion.div
-                key={item.title}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedType(item.title)}
-                className={`relative min-w-[140px] aspect-[4/5] p-5 rounded-[24px] border transition-all duration-300 flex flex-col justify-between overflow-hidden group cursor-pointer ${
-                  selectedType === item.title
-                  ? 'bg-white/10 border-white/20'
-                  : 'bg-white/5 border-white/5'
-                }`}
-              >
-                {selectedType === item.title && (
-                  <motion.div
-                    layoutId="rel-bg"
-                    className="absolute inset-0 opacity-20"
-                    style={{ backgroundColor: item.color, filter: 'blur(40px)' }}
-                  />
-                )}
-
-                <div className="relative z-10 flex flex-col h-full justify-between">
-                  <div>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">{item.badge}</span>
-                    <h4 className={`font-black text-lg transition-colors ${selectedType === item.title ? 'text-white' : 'text-white/40'}`}>{item.title}</h4>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                      selectedType === item.title
-                      ? 'bg-white text-dark scale-110 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-                      : 'bg-white/5 text-white/20'
-                    }`}>
-                      <item.icon size={20} fill={selectedType === item.title ? "currentColor" : "none"} />
-                    </div>
-                    <p className={`text-[9px] font-medium leading-tight h-8 flex items-end transition-opacity ${selectedType === item.title ? 'opacity-60' : 'opacity-0'}`}>
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Animated Ring if selected */}
-                {selectedType === item.title && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 0.15, scale: 1.5 }}
-                    className="absolute bottom-[-20%] right-[-20%] w-32 h-32 border border-white rounded-full"
-                  />
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Target ID Input */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <h4 className="text-[10px] font-black uppercase text-white/30 tracking-widest uppercase">定位共鸣坐标</h4>
-            <span className="text-[10px] font-black text-gold/40 italic">Target DR ID</span>
-          </div>
-
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-5 flex items-center text-white/20">
-              <Search size={18} />
-            </div>
-            <input
-              value={targetId}
-              onChange={(e) => {
-                setTargetId(e.target.value);
-                if (e.target.value.length > 5) {
-                  setIsSearching(true);
-                  setTimeout(() => setIsSearching(false), 800);
-                }
-              }}
-              className="w-full h-16 bg-white/5 rounded-[18px] pl-14 pr-14 font-bold border border-white/5 focus:border-white/20 focus:bg-white/10 transition-all outline-none text-white tracking-widest placeholder:text-white/10"
-              placeholder="ENTER DR ID..."
-            />
-            <div className="absolute inset-y-0 right-5 flex items-center">
-              {isSearching ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full"
-                />
-              ) : targetId.length > 0 && (
-                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-400">
-                  <Check size={14} strokeWidth={3} />
-                </div>
-              )}
-            </div>
-          </div>
-          {targetId.length > 5 && !isSearching && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/5"
-            >
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${targetId}`} className="w-10 h-10 rounded-lg bg-white/5" alt="Found" />
-              <div>
-                <p className="text-xs font-bold text-white">找到匹配用户: <span className="text-gold italic">@{targetId}</span></p>
-                <p className="text-[9px] font-black text-white/30 uppercase mt-0.5 tracking-wider">Signals Match - Frequency Stabilized</p>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </main>
-
-      <footer className="p-8 pt-0 relative z-20">
-         <button
-           onClick={() => setScreen('relation-sent')}
-           disabled={!targetId}
-           className="w-full h-16 group relative overflow-hidden rounded-[18px] disabled:opacity-30 transition-all active:scale-95"
-         >
-            <div className="absolute inset-0 bg-white group-hover:bg-gold transition-colors duration-500"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-[radial-gradient(circle_at_center,white_0%,transparent_70%)]"></div>
-
-            <div className="relative z-10 flex items-center justify-center gap-3 text-dark">
-              <div className="flex flex-col items-center">
-                <span className="text-xs font-black uppercase tracking-[0.2em] leading-none mb-1">Star Trail Ring</span>
-                <span className="text-[10px] font-black italic opacity-60">购买「星轨戒指」并发送</span>
-              </div>
-              <ChevronRight size={18} strokeWidth={3} />
-            </div>
-
-            {/* Shimmer Effect */}
-            <motion.div
-              animate={{ x: ['-100%', '200%'] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="absolute top-0 bottom-0 w-24 bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12"
-            />
-         </button>
-
-         <p className="text-center mt-6 text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">
-           Consumed 520 Diamonds for the Ritual
-         </p>
-      </footer>
-    </div>
-  );
-};
-
-// --- Relation Sent Screen ---
-
-const RelationSentScreen = ({ setScreen }: { setScreen: (s: Screen) => void }) => {
-  return (
-    <div className="flex flex-col items-center justify-center h-full bg-[#050505] px-10 text-center relative overflow-hidden">
-      {/* Background Particles */}
-      {[...Array(20)].map((_, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: [0, 1, 0], y: -500 - Math.random() * 500 }}
-          transition={{ duration: 2 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 5 }}
-          className="absolute w-0.5 h-0.5 bg-white rounded-full bg-gold"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: '110%'
-          }}
-        />
-      ))}
-
-      <div className="relative mb-12">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-[-40px] border border-dashed border-gold/10 rounded-full"
-        />
-        <motion.div
-          animate={{ rotate: -360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-[-20px] border border-dashed border-white/10 rounded-full"
-        />
-
-        <motion.div
-          initial={{ scale: 0, scaleY: 0.5 }}
-          animate={{ scale: 1, scaleY: 1 }}
-          transition={{ type: "spring", damping: 12 }}
-          className="w-32 h-32 bg-white rounded-[30px] flex items-center justify-center shadow-[0_0_80px_rgba(255,255,255,0.15)] relative z-10 group"
-        >
-          <motion.div
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Sparkles size={56} className="text-dark" strokeWidth={2.5} />
-          </motion.div>
-
-          <motion.div
-             animate={{ height: ['0%', '100%', '0%'], opacity: [0, 0.5, 0] }}
-             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-             className="absolute inset-0 w-full rounded-[30px] bg-gold"
-          />
-        </motion.div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="space-y-4"
-      >
-        <div className="space-y-2">
-          <h2 className="text-4xl font-black text-white italic tracking-tight">星讯已发出!</h2>
-          <p className="text-[10px] font-black uppercase text-gold/40 tracking-[0.4em]">Signal Transmitted Successfully</p>
-        </div>
-        <p className="text-white/40 text-xs leading-relaxed italic max-w-[240px] mx-auto">
-          你的「星轨戒指」已穿透时空。当对方在频率中捕捉到你，专属共鸣标记将永久闪烁在你们的数字星系中。
-        </p>
-      </motion.div>
-
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        onClick={() => setScreen('home')}
-        className="w-full mt-12 group h-16 bg-white/5 border border-white/10 rounded-[20px] relative overflow-hidden flex items-center justify-center active:scale-95 transition-all"
-      >
-        <div className="absolute inset-0 bg-white translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500"></div>
-        <span className="relative z-10 font-black text-xs uppercase tracking-widest text-white group-hover:text-dark transition-colors">回到现实世界</span>
-      </motion.button>
-    </div>
-  );
-};
-
-// --- User Profile Screen (Public) ---
-const UserProfileScreen = ({
-  setScreen,
-  userName,
-  prevScreen,
-  showToast,
-  setInitialNetworkTab,
-  userRemarks,
-  setUserRemarks,
-  blockedUserNames,
-  blockUser,
-  setReportTargetName,
-}: {
-  setScreen: (s: Screen) => void,
-  userName: string,
-  prevScreen: Screen,
-  showToast: (m: string) => void,
-  setInitialNetworkTab: (tab: 'followers' | 'following' | 'friends') => void,
-  userRemarks: Record<string, string>,
-  setUserRemarks: React.Dispatch<React.SetStateAction<Record<string, string>>>,
-  blockedUserNames: Set<string>,
-  blockUser: (name: string) => void,
-  setReportTargetName: (name: string) => void,
-}) => {
-  const [isFollowed, setIsFollowed] = useState(true);
-  const [filter, setFilter] = useState('全部');
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false);
-  const [isRemarkOpen, setIsRemarkOpen] = useState(false);
-  const [remarkDraft, setRemarkDraft] = useState(userRemarks[userName] || '');
-
-  const filterOptions = ['全部', '我发起的', '参与共创', '待成圈'];
-
-  const allWorks = [
-    { id: 1, type: '发起', status: '已成圈' },
-    { id: 2, type: '发起', status: '待成圈' },
-    { id: 3, type: '参与', status: '已成圈' },
-    { id: 4, type: '参与', status: '待成圈' },
-    { id: 5, type: '参与', status: '已成圈' },
-    { id: 6, type: '发起', status: '已成圈' },
-  ];
-
-  const getDisplayStatus = (work: { type: string; status: string }) => {
-    if (work.type === '发起') return '我发起的';
-    if (work.status === '待成圈') return '待成圈';
-    return '参与共创';
-  };
-
-  const filteredWorks = allWorks.filter(w => {
-    if (filter === '全部') return true;
-    if (filter === '我发起的') return w.type === '发起';
-    if (filter === '参与共创') return w.type === '参与' && w.status === '已成圈';
-    if (filter === '待成圈') return w.status === '待成圈';
-    return true;
-  });
-  const publicProfile = {
-    description: '喜欢收集城市角落里的声音和短暂的光，也愿意把日常交给一群人共同完成。',
-    gender: userName === 'Mia' ? '女' : '',
-    birthday: userName === 'Mia' ? '1999-10-08' : '',
-  };
-  const getAge = (birthday: string) => {
-    if (!birthday) return '';
-    const birth = new Date(birthday);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDelta = today.getMonth() - birth.getMonth();
-    if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birth.getDate())) age -= 1;
-    return `${age} 岁`;
-  };
-  const getZodiac = (birthday: string) => {
-    if (!birthday) return '';
-    const [, monthText, dayText] = birthday.split('-');
-    const month = Number(monthText);
-    const day = Number(dayText);
-    const signs = [
-      ['摩羯座', 20], ['水瓶座', 19], ['双鱼座', 21], ['白羊座', 20],
-      ['金牛座', 21], ['双子座', 22], ['巨蟹座', 23], ['狮子座', 23],
-      ['处女座', 23], ['天秤座', 24], ['天蝎座', 23], ['射手座', 22], ['摩羯座', 32],
-    ];
-    return day < Number(signs[month - 1][1]) ? String(signs[month - 1][0]) : String(signs[month][0]);
-  };
-  const profileFacts = [
-    publicProfile.gender ? { label: '性别', value: publicProfile.gender } : null,
-    publicProfile.birthday ? { label: '星座', value: getZodiac(publicProfile.birthday) } : null,
-    publicProfile.birthday ? { label: '年龄', value: getAge(publicProfile.birthday) } : null,
-  ].filter(Boolean) as Array<{ label: string; value: string }>;
-  const userCode = `${Math.abs([...userName].reduce((sum, char) => sum + char.charCodeAt(0), 0) * 73).toString(36).toUpperCase()}B6SG`;
-  const displayName = `迪儿${userCode}`;
-  const displayId = `@dear${userCode}`;
-  const ipLocation = getUserIpLocation(userName);
-  const remarkName = userRemarks[userName];
-  const isBlocked = blockedUserNames.has(userName);
-  const closeMore = () => setIsMoreOpen(false);
-
-  const saveRemark = () => {
-    const nextRemark = remarkDraft.trim();
-    setUserRemarks(prev => {
-      const next = { ...prev };
-      if (nextRemark) next[userName] = nextRemark;
-      else delete next[userName];
-      return next;
-    });
-    setIsRemarkOpen(false);
-    showToast(nextRemark ? '备注已保存' : '备注已清除');
-  };
-
-  const handleUnfollow = () => {
-    setIsFollowed(false);
-    closeMore();
-    showToast('已取消关注');
-  };
-
-  const handleFollowToggleFromMenu = () => {
-    setIsFollowed(prev => {
-      const next = !prev;
-      showToast(next ? '已关注' : '已取消关注');
-      return next;
-    });
-    closeMore();
-  };
-
-  const handleReport = () => {
-    setReportTargetName(userName);
-    closeMore();
-    setScreen('report-user');
-  };
-
-  const handleBlock = () => {
-    blockUser(userName);
-    setIsBlockConfirmOpen(false);
-    closeMore();
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_top,#fffaf4_0%,#f7f2ea_42%,#f2ebe1_100%)] pt-8 text-[#2f261d]">
-      <header className="p-6 flex items-center justify-between sticky top-0 bg-[#f9f5ef]/90 backdrop-blur-xl z-20">
-        <button onClick={() => setScreen(prevScreen)} className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/82 text-[#4f3d2d] shadow-sm active:scale-95 transition-transform">
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d] text-lg tracking-tight">用户详情</h2>
-        <button onClick={() => setIsMoreOpen(true)} className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/82 text-[#4f3d2d] shadow-sm active:scale-95 transition-transform" aria-label="更多操作">
-          <MoreHorizontal size={20} />
-        </button>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-32">
-        <section className="mt-2 px-2 py-4">
-          <div className="flex items-center gap-4">
-            <div className="relative shrink-0">
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayId}`} alt="" className="w-[78px] h-[78px] rounded-full object-cover shadow-[0_10px_22px_rgba(73,55,39,0.12)]" />
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#fff6e9] rounded-full shadow-sm flex items-center justify-center text-[#b4834a]">
-                <ShieldCheck size={14} strokeWidth={3} />
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-0 text-left">
-              <h1 className="text-[24px] font-black text-[#2f261d] tracking-tight leading-tight">{remarkName || displayName}</h1>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <p className="text-[#7d6f61]">{displayId}</p>
-                {remarkName && <span className="text-[11px] font-bold text-[#b0a08e]">原名：{displayName}</span>}
-                <span className="text-[11px] font-bold text-[#b0a08e]">IP：{ipLocation}</span>
-                {isBlocked && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-500">已拉黑</span>}
-              </div>
-              <p className="mt-2.5 text-[#8f7f6d] text-sm leading-relaxed">{publicProfile.description}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mt-6">
-            <button
-              onClick={() => { setInitialNetworkTab('followers'); setScreen('network-list'); }}
-              className="text-center active:scale-95 transition-transform"
-            >
-              <p className="text-[20px] font-black text-[#2f261d]">1.2k</p>
-              <p className="text-[10px] text-[#a79584] font-bold">粉丝</p>
-            </button>
-            <div className="text-center">
-              <p className="text-[20px] font-black text-[#2f261d]">86</p>
-              <p className="text-[10px] text-[#a79584] font-bold">共创</p>
-            </div>
-            <button
-              onClick={() => { setInitialNetworkTab('following'); setScreen('network-list'); }}
-              className="text-center active:scale-95 transition-transform"
-            >
-              <p className="text-[20px] font-black text-[#2f261d]">14w</p>
-              <p className="text-[10px] text-[#a79584] font-bold">获赞</p>
-            </button>
-          </div>
-
-          {profileFacts.length > 0 && (
-            <div className={`grid gap-2 mt-5 ${profileFacts.length === 1 ? 'grid-cols-1' : profileFacts.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-              {profileFacts.map(item => (
-                <div key={item.label} className="rounded-[14px] bg-white/58 px-3 py-3 text-center shadow-sm">
-                  <p className="text-[10px] font-black text-[#a79584]">{item.label}</p>
-                  <p className="mt-1 text-sm font-black text-[#2f261d]">{item.value}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex gap-2.5 mt-5">
-            <button
-              onClick={() => {
-                setIsFollowed(!isFollowed);
-                if (!isFollowed) showToast('已关注');
-              }}
-              disabled={isBlocked}
-              className={`flex-1 h-12 rounded-[14px] font-black text-xs transition-all flex items-center justify-center gap-2 active:scale-95 ${
-                isBlocked
-                ? 'bg-white/46 text-[#c2b4a4] shadow-sm'
-                :
-                isFollowed
-                ? 'bg-white/70 text-[#8f7f6d] shadow-sm'
-                : 'bg-[#2f261d] text-white shadow-[0_14px_28px_rgba(47,38,29,0.14)]'
-              }`}
-            >
-              {isBlocked ? '已拉黑' : isFollowed ? '已关注' : '关注 TA'}
-            </button>
-            <button
-              onClick={() => setScreen('dm')}
-              disabled={isBlocked}
-              className="flex-1 h-12 rounded-[14px] bg-white/76 text-[#2f261d] font-black text-xs active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-sm"
-            >
-              <MessageCircle size={14} /> 发送私信
-            </button>
-          </div>
-        </section>
-
-        <section className="mt-2 space-y-5">
-          <div className="rounded-[16px] bg-gradient-to-r from-[#fff1f4] via-white to-[#fffaf4] px-4 py-4 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <h4 className="text-sm font-black text-[#2f261d] flex items-center gap-2">
-                  <Heart size={15} className="text-[#FE2C55] fill-current" /> 关系状态
-                </h4>
-                <p className="mt-1 text-[11px] text-[#8f7f6d] font-bold">目前还没有与 TA 建立专属关系标记</p>
-              </div>
-              <button
-                onClick={() => setScreen('relation-invite')}
-                className="h-9 px-4 bg-[#FE2C55] text-white rounded-full text-[10px] font-black active:scale-95 transition-transform shrink-0"
-              >
-                发起绑定
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h4 className="text-xs font-black text-[#2f261d]">TA 的共创作品</h4>
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-              {filterOptions.map(opt => (
-                <button
-                  key={opt}
-                  onClick={() => setFilter(opt)}
-                  className={`px-4 py-2 rounded-full text-[10px] font-black transition-all whitespace-nowrap ${
-                    filter === opt
-                    ? 'bg-[#2f261d] text-white shadow-sm'
-                    : 'bg-white/82 text-[#8f7f6d]'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 pb-8">
-              {filteredWorks.map((work, index) => {
-                const topic = TOPICS[(work.id + index) % TOPICS.length];
-                const isPending = work.status !== '已成圈';
-                return (
-                  <button key={work.id} className="relative aspect-[3/4.1] overflow-hidden rounded-[18px] bg-[#f6ede3] shadow-[0_12px_24px_rgba(103,81,58,0.08)] active:scale-[0.98] transition-transform text-left">
-                    <img src={topic.image} alt="" className={`absolute inset-0 h-full w-full object-cover transition-all ${isPending ? 'scale-105 blur-[6px]' : ''}`} />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${isPending ? 'from-black/75 via-black/30 to-black/5' : 'from-black/65 via-black/15 to-transparent'}`} />
-                    <span className="absolute left-2.5 top-2.5 rounded-full bg-white/90 px-2 py-1 text-[9px] font-black text-[#2f261d] shadow-sm">
-                      {getDisplayStatus(work)}
-                    </span>
-                    <div className="absolute inset-x-0 bottom-0 p-3">
-                      <p className="text-sm font-black text-white leading-tight line-clamp-2">{topic.title}</p>
-                      <div className="mt-2 flex items-center justify-between text-white/85">
-                        <span className="text-[10px] font-black">{topic.likes}</span>
-                        <span className="text-[10px] font-black">2.4k</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-              {filteredWorks.length === 0 && (
-                <div className="col-span-2 py-20 text-center">
-                  <p className="text-[#b0a08e] text-xs font-black tracking-widest">暂无相关作品</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <AnimatePresence>
-        {isMoreOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/28 backdrop-blur-sm"
-            onClick={closeMore}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 260 }}
-              className="rounded-t-[32px] bg-[#fffaf5] px-5 pb-8 pt-3 shadow-[0_-18px_50px_rgba(73,55,39,0.16)]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-[#eadfce]" />
-              <div className="mb-4 flex items-center gap-3">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayId}`} alt="" className="h-11 w-11 rounded-xl bg-[#f6ede3]" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-[#2f261d]">{remarkName || displayName}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#a79584]">{displayId}</p>
-                </div>
-              </div>
-              {[
-                { label: '发私信', icon: MessageCircle, action: () => { closeMore(); setScreen('dm'); } },
-                { label: '设置备注', icon: Pencil, action: () => { closeMore(); setRemarkDraft(userRemarks[userName] || ''); setIsRemarkOpen(true); } },
-                { label: isFollowed ? '取消关注' : '关注', icon: UserPlus, action: handleFollowToggleFromMenu },
-                { label: '举报', icon: AlertTriangle, action: handleReport, danger: true },
-                { label: '拉黑', icon: Lock, action: () => setIsBlockConfirmOpen(true), danger: true },
-              ].map(item => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className={`flex w-full items-center gap-3 rounded-[16px] px-4 py-3.5 text-left active:bg-[#f6ede3] transition-colors ${
-                    item.danger ? 'text-rose-500' : 'text-[#2f261d]'
-                  }`}
-                >
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${item.danger ? 'bg-rose-50' : 'bg-[#f6ede3]'}`}>
-                    <item.icon size={17} />
-                  </span>
-                  <span className="text-sm font-black">{item.label}</span>
-                </button>
-              ))}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isRemarkOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[95] flex items-center justify-center bg-black/30 px-6 backdrop-blur-sm"
-            onClick={() => setIsRemarkOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.94, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 12 }}
-              className="w-full rounded-[20px] bg-[#fffaf5] p-5 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-black text-[#2f261d]">设置备注</h3>
-              <p className="mt-1 text-xs font-bold text-[#8f7f6d]">给 {displayName} 一个你更容易识别的名字。</p>
-              <input
-                value={remarkDraft}
-                onChange={(e) => setRemarkDraft(e.target.value)}
-                maxLength={16}
-                placeholder="输入备注名"
-                className="mt-5 h-12 w-full rounded-xl bg-[#f8f1e8] px-4 text-sm font-black text-[#2f261d] outline-none"
-              />
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button onClick={() => setIsRemarkOpen(false)} className="h-11 rounded-xl bg-white text-sm font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">取消</button>
-                <button onClick={saveRemark} className="h-11 rounded-xl bg-[#2f261d] text-sm font-black text-white active:scale-95 transition-transform">保存</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isBlockConfirmOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] flex items-end bg-black/32 backdrop-blur-sm"
-            onClick={() => setIsBlockConfirmOpen(false)}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="w-full rounded-t-[32px] bg-[#fffaf5] px-6 pb-8 pt-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-500">
-                <AlertTriangle size={26} />
-              </div>
-              <h3 className="text-center text-xl font-black text-[#2f261d]">确认拉黑 {remarkName || displayName}？</h3>
-              <p className="mx-auto mt-3 max-w-[280px] text-center text-xs font-bold leading-relaxed text-[#8f7f6d]">
-                拉黑后，对方将无法与你私信互动，也会进入设置中的黑名单列表。
-              </p>
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button onClick={() => setIsBlockConfirmOpen(false)} className="h-12 rounded-xl bg-white text-sm font-black text-[#8f7f6d] shadow-sm active:scale-95 transition-transform">再想想</button>
-                <button onClick={handleBlock} className="h-12 rounded-xl bg-rose-500 text-sm font-black text-white active:scale-95 transition-transform">确认拉黑</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-
-// --- Personal Profile Screen ---
-
-const PersonalProfileScreen = ({ setScreen, profile, setProfile, showToast }: {
-  setScreen: (s: Screen) => void,
-  profile: EditableProfile,
-  setProfile: (profile: EditableProfile) => void,
-  showToast: (message: string) => void
-}) => {
-  const [draft, setDraft] = useState<EditableProfile>(profile);
-  const updateDraft = (key: keyof EditableProfile, value: string) => {
-    setDraft(prev => ({ ...prev, [key]: value }));
-  };
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => updateDraft('avatar', event.target?.result as string);
-    reader.readAsDataURL(file);
-  };
-  const saveProfile = () => {
-    setProfile(draft);
-    showToast('个人资料已保存');
-    setScreen('me');
-  };
-
-  return (
-    <div className={lightPageRootPadded}>
-      <header className={lightHeaderShell}>
-        <button onClick={() => setScreen('me')} className={lightIconButton}>
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-[#2f261d]">个人主页</h2>
-        <button onClick={saveProfile} className="h-10 px-4 rounded-xl bg-[#2f261d] text-white text-xs font-black active:scale-95 transition-transform">
-          保存
-        </button>
-      </header>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
-        <section className="text-center py-8">
-           <div className="relative w-28 h-28 mx-auto">
-             <img src={draft.avatar} alt="" className="w-28 h-28 rounded-full bg-white mx-auto shadow-[0_12px_28px_rgba(73,55,39,0.14)] object-cover" />
-             <label className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-[#2f261d] text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer">
-                <Camera size={18} />
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-             </label>
-           </div>
-           <h1 className="text-2xl font-black mt-5 text-[#2f261d]">{draft.name}</h1>
-           <p className="text-[#8f7f6d] text-sm mt-1 font-black">@{draft.userId}</p>
-           <p className="text-[#b0a08e] text-[10px] font-bold mt-1">IP：{draft.ipLocation}</p>
-           <p className="text-[#7d6f61] text-xs leading-relaxed mt-4 px-8">{draft.bio}</p>
-        </section>
-
-        <section className="px-6 space-y-4">
-           <div className="p-5 space-y-4 rounded-[20px] bg-white/68 shadow-[0_12px_28px_rgba(103,81,58,0.05)]">
-              <h4 className="text-[11px] font-black text-[#8f7f6d]">编辑资料</h4>
-              <label className="block space-y-2">
-                <span className="text-[10px] font-black text-[#a79584]">名称</span>
-                <input value={draft.name} onChange={(e) => updateDraft('name', e.target.value)} className="w-full h-12 rounded-xl bg-[#f8f1e8] px-4 text-sm font-bold text-[#2f261d] outline-none" />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-[10px] font-black text-[#a79584]">UserID</span>
-                <div className="flex h-12 rounded-xl bg-[#f8f1e8] px-4 items-center gap-1">
-                  <span className="text-sm font-bold text-[#8f7f6d]">@</span>
-                  <input value={draft.userId} onChange={(e) => updateDraft('userId', e.target.value.replace(/^@/, ''))} className="flex-1 bg-transparent text-sm font-bold text-[#2f261d] outline-none" />
-                </div>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-2">
-                  <span className="text-[10px] font-black text-[#a79584]">性别</span>
-                  <select value={draft.gender} onChange={(e) => updateDraft('gender', e.target.value)} className="w-full h-12 rounded-xl bg-[#f8f1e8] px-4 text-sm font-bold text-[#2f261d] outline-none">
-                    <option value="">不填写</option>
-                    <option value="男">男</option>
-                    <option value="女">女</option>
-                    <option value="其他">其他</option>
-                  </select>
-                </label>
-                <label className="block space-y-2">
-                  <span className="text-[10px] font-black text-[#a79584]">生日</span>
-                  <input type="date" value={draft.birthday} onChange={(e) => updateDraft('birthday', e.target.value)} className="w-full h-12 rounded-xl bg-[#f8f1e8] px-3 text-sm font-bold text-[#2f261d] outline-none" />
-                </label>
-              </div>
-              <label className="block space-y-2">
-                <span className="text-[10px] font-black text-[#a79584]">个人描述</span>
-                <textarea value={draft.bio} onChange={(e) => updateDraft('bio', e.target.value)} className="w-full min-h-[92px] rounded-xl bg-[#f8f1e8] px-4 py-3 text-sm font-bold leading-relaxed text-[#2f261d] outline-none resize-none" />
-              </label>
-           </div>
-
-           <div className="p-6 bg-white/82 rounded-[24px] space-y-6 border border-[#eadfce] shadow-2xl">
-              <div className="flex justify-between items-center">
-                 <h4 className="text-[10px] font-black uppercase text-[#8f7f6d] tracking-widest ml-1">已绑定关系</h4>
-                 <button onClick={() => setScreen('relation-invite')} className="w-8 h-8 bg-white rounded-lg border border-[#eadfce] flex items-center justify-center text-[#8f7f6d] hover:text-[#2f261d] transition-colors">
-                    <Plus size={18} />
-                 </button>
-              </div>
-              <div className="space-y-4">
-                 {[
-                   { name: '林野', type: '真爱', time: '214 天', color: 'rose' },
-                   { name: 'Mia', type: '闺蜜', time: '45 天', color: 'indigo' },
-                 ].map(rel => (
-                    <div key={rel.name} className="flex items-center justify-between p-4 rounded-xl border border-[#eadfce] bg-white shadow-sm">
-                       <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-[#f6ede3] flex items-center justify-center">
-                             <UserIcon size={16} className="text-[#c0b09d]" />
-                          </div>
-                          <div>
-                             <p className="text-sm font-bold text-[#2f261d]">{rel.name}</p>
-                             <p className={`text-[10px] font-black uppercase tracking-widest ${rel.color === 'rose' ? 'text-rose-400' : 'text-indigo-400'}`}>{rel.type}</p>
-                          </div>
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[10px] font-black text-[#b0a08e] uppercase tracking-widest">绑定时长</p>
-                          <p className="text-xs font-bold text-[#2f261d]">{rel.time}</p>
-                       </div>
-                    </div>
-                 ))}
-              </div>
-           </div>
-        </section>
-      </main>
-    </div>
-  );
-};
-
-// --- Relation Review Screen ---
-
-const RelationReviewScreen = ({ setScreen, showToast }: { setScreen: (s: Screen) => void, showToast: (m: string) => void }) => {
-  return (
-    <div className="flex flex-col h-full bg-[#050505] relative overflow-hidden">
-      {/* Immersive Space Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-full h-full opacity-40 blur-[130px] bg-gradient-to-bl from-gold/30 via-indigo-600/10 to-transparent"></div>
-        <motion.div
-          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.3, 0.1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 70% 20%, rgba(255,215,0,0.15) 0%, transparent 60%)'
-          }}
-        ></motion.div>
-      </div>
-
-      <header className="p-6 flex items-center justify-between relative z-20">
-        <button onClick={() => setScreen('messages')} className="w-12 h-12 glass-pill rounded-xl flex items-center justify-center border border-white/5 active:scale-90 transition-transform">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <div className="text-center">
-          <h2 className="font-bold text-white tracking-[0.3em] uppercase text-[10px] opacity-60">Incoming Signal</h2>
-          <div className="h-0.5 w-8 bg-gold mx-auto mt-1 rounded-full animate-pulse"></div>
-        </div>
-        <div className="w-12"></div>
-      </header>
-
-      <main className="flex-1 p-8 space-y-10 overflow-y-auto no-scrollbar relative z-10 pt-12">
-        {/* Transmission Source Header */}
-        <section className="space-y-6 text-center">
-          <div className="relative inline-block">
-             <motion.div
-               animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
-               transition={{ duration: 3, repeat: Infinity, ease: "easeOut" }}
-               className="absolute inset-[-15px] border border-gold/30 rounded-full"
-             />
-             <div className="w-28 h-28 rounded-[34px] bg-gradient-to-br from-gold to-yellow-600 p-1 shadow-[0_0_60px_rgba(255,215,0,0.2)] relative z-10">
-                <div className="w-full h-full rounded-[32px] bg-dark overflow-hidden flex items-center justify-center p-0.5 relative group">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=FriendLin" className="w-full h-full object-cover rounded-[30px]" alt="Sender" />
-                  <div className="absolute inset-0 bg-gold/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </div>
-                <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-xl flex items-center justify-center text-dark shadow-xl border-4 border-dark">
-                  <Heart size={18} fill="currentColor" />
-                </div>
-             </div>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-black uppercase text-gold tracking-[0.4em] mb-1">来自 林野 的讯号</h4>
-            <h1 className="text-4xl font-black text-white italic tracking-tighter leading-none">邀请你开启「真爱」绑定</h1>
-          </div>
-        </section>
-
-        {/* Message Content */}
-        <section className="relative">
-           <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-transparent via-gold to-transparent opacity-20"></div>
-           <div className="bg-white/5 rounded-[24px] p-8 border border-white/5 relative backdrop-blur-md overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <MessageCircle size={60} />
-              </div>
-              <h4 className="text-[10px] font-black uppercase text-white/30 tracking-widest mb-4">附带讯息 / Transmitted Note</h4>
-              <p className="text-base font-medium leading-[1.8] italic text-white/80">
-                “我们从城市声音认识，想把这段关系标记得更正式一点，在每个共创的时刻，你都是唯一的频率。”
-              </p>
-           </div>
-        </section>
-
-        {/* Ritual Cost Disclosure */}
-        <div className="p-6 bg-gradient-to-r from-gold/10 to-transparent rounded-xl space-y-4 border border-gold/10">
-           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gold">
-                <Gem size={14} />
-              </div>
-              <h4 className="text-[10px] font-black uppercase text-white/40 tracking-widest uppercase">协议说明</h4>
-           </div>
-           <p className="text-[11px] text-white/50 leading-relaxed italic border-l border-white/10 pl-4">
-             确认绑定将消耗对方刚才支付的「星轨戒指」(520 钻石)。真爱关系每位用户仅限一位。绑定后，双方空间将产生永久的数字共鸣标记。
-           </p>
-        </div>
-      </main>
-
-      <footer className="p-8 pb-12 relative z-20 space-y-4">
-         <button
-           onClick={() => {
-             showToast('恭喜！星轨轨道已对接成功。');
-             setTimeout(() => setScreen('me'), 1000);
-           }}
-           className="w-full h-16 bg-white rounded-[18px] font-black uppercase text-xs text-dark shadow-[0_20px_50px_rgba(255,255,255,0.2)] active:scale-95 transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
-         >
-            <div className="absolute inset-0 bg-gold translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500"></div>
-            <span className="relative z-10 flex items-center gap-2">
-              同意并开启共鸣 <Zap size={14} fill="currentColor" />
-            </span>
-         </button>
-
-         <button
-           onClick={() => setScreen('messages')}
-           className="w-full h-14 bg-white/5 border border-white/10 rounded-[18px] font-black uppercase text-[10px] tracking-[0.2em] text-white/40 active:scale-95 transition-all"
-         >
-            暂时保持独立轨道
-         </button>
-      </footer>
-    </div>
-  );
-};

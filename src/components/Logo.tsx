@@ -2,7 +2,7 @@ import React from 'react';
 
 export const Logo = ({ size = 64, className = "", onClick }: { size?: number, className?: string, onClick?: () => void }) => {
   return (
-    <svg width={size} height={size} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DR圈 logo" className={className} onClick={onClick}>
+    <svg width={size} height={size} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DRcircle logo" className={className} onClick={onClick}>
       <defs>
         <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="7" result="blur"/>
